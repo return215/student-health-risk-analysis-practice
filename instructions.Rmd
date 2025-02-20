@@ -1,0 +1,37 @@
+# Pendahuluan
+
+Tujuan dari proyek ini adalah untuk memprediksi tingkat risiko (Risk Level)
+kesehatan mahasiswa berdasarkan data kesehatan dan kehadiran.
+
+# Persiapan
+
+Data berada dalam folder berikut:
+
+```tree
+.
+├── Student Health and Attendance Data
+│   ├── student_monnitoring_data.csv
+│   └── student_tracking_data.csv
+```
+
+## Load library yang diperlukan
+
+## Load dan siapkan data
+
+# Modeling
+
+## Membagi data menjadi training dan testing
+
+## 1. MEMBUAT KETIGA MODEL DAN INTERPRETASI
+
+## 2. FUNGSI UNTUK MENGHITUNG R^2 DAN RMSE
+
+## 3. MENGHITUNG METRICS UNTUK SETIAP MODEL
+
+## 4. VISUALISASI PERBANDINGAN METRICS
+
+## 5. MENENTUKAN MODEL TERBAIK
+
+## 6. VISUALISASI PREDIKSI MODEL TERBAIK
+
+# Kesimpulan

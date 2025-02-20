@@ -1,0 +1,163 @@
+---
+title: "Notebook: Analisis Tingkat Risiko Kesehatan Mahasiswa"
+author: "Muhammad Hidayat"
+date: "`r Sys.Date()`"
+output: 
+  html_notebook: 
+    toc: true
+---
+
+# Pendahuluan
+
+# Persiapan
+
+## Memuat library
+
+```{r setup, message = FALSE, warning = FALSE}
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(tidyr)
+library(moments) # untuk skewness dan kurtosis
+library(car) # untuk analisis statistik
+library(nortest) # untuk uji normalitas
+library(ggpubr) # untuk visualisasi statistik
+```
+
+## Memuat data
+
+Dataset yang digunakan adalah [Student Health and Attendance Data](https://www.kaggle.com/datasets/ziya07/student-health-and-attendance-data). Berikut perintah `bash` untuk mengecek kesamaan file.
+
+```{bash checksum}
+sha256sum "Student Health and Attendance Data/"*
+```
+
+Kedua file sama, jadi cukup satu yang digunakan, yaitu `student_monnitoring_data.csv`.
+
+```{r read.csv}
+data <- read.csv("Student Health and Attendance Data/student_monnitoring_data.csv")
+```
+
+```{r sum.is.na}
+sum(is.na(data))
+```
+
+Tidak ada data kosong dalam dataset, sehingga tidak perlu dibersihkan.
+
+Berikut 10 data pertama dan 10 data terakhir dari dataset.
+
+```{r data.head}
+data |> head(10)
+```
+
+```{r data.tail}
+data |> tail(10)
+```
+
+```{r data.summary}
+data |> summary()
+```
+
+## Transformasi data
+
+Selanjutnya, data di atas diproses dengan mengubah tipe data:
+
+- Date (Date)
+- Class.Time &rarr; Start.Time (POSIXct), End.Time (POSIXct)
+- Attendance.Status &rarr; (Factor)
+- Risk.Level &rarr; (Factor)
+
+Selain itu, terdapat data yang ditambahkan:
+
+- Class.Duration.Hours (Numeric), jeda waktu antara Start.Time dan End.Time dalam satuan jam. Operasi pengurangan dengan data tersebut sebenarnya memanggil fungsi "difftime" dan secara bawaan menghasilkan keluaran dalam satuan jam.
+
+```{r mutate}
+new_data <- data |>
+  mutate(
+    Date = Date |> as.Date(format = "%Y-%m-%d"),
+    Start.Time = Class.Time |> as.character() |> strsplit("-") |> sapply(\(x) x[1]),
+    End.Time = Class.Time |> as.character() |> strsplit("-") |> sapply(\(x) x[2]),
+    Start.Time = paste(Date, Start.Time) |> as.POSIXct(format = "%Y-%m-%d %H:%M"),
+    End.Time = paste(Date, End.Time) |> as.POSIXct(format = "%Y-%m-%d %H:%M"),
+    Class.Duration = (End.Time - Start.Time) |> as.numeric(),
+    Stress.Level..GSR. = Stress.Level..GSR. |> as.numeric(),
+    Sleep.Hours = Sleep.Hours |> as.numeric(),
+    Anxiety.Level = Anxiety.Level |> as.numeric(),
+    Mood.Score = Mood.Score |> as.numeric(),
+    Attendance.Status = Attendance.Status |> as.factor(),
+    Risk.Level = Risk.Level |> as.factor()
+  )
+```
+
+Berikut penjelasan dari perubahan di atas:
+
+- "Attendance Status" dan "Risk Level" diubah menjadi tipe Factor karena merupakan data kualitatif/kategorik.
+- "Date" diubah menjadi tipe Date karena merupakan data tanggal.
+- "Class Time" dipecah menjadi dua, yaitu "Start Time" dan "End Time". Data Character dari "Class Time" mula-mula dipecah menjadi dua pada tanda "-" menggunakan fungsi "strsplit()" sehingga "9:00-15:00" berubah menjadi `r strsplit("9:00-15:00", "-") |> paste()`. Masing-masing kemudian digabung dengan Character dari Date sehingga membentuk format "2024-12-01 9:00" yang nantinya dikonversi menjadi tipe waktu POSIXct.
+- Data yang lain diubah ke tipe Numeric karena sudah berupa bilangan.
+- Proses transformasi data menggunakan sintaks baru untuk piping, yaitu `|>`, yang dikenalkan sejak R versi 4.1.
+
+Berikut 10 data pertama dan 10 data terakhir dari dataset yang diubah.
+
+```{r new_data.head}
+new_data |> head(10)
+```
+
+```{r new_data.tail}
+new_data |> tail(10)
+```
+
+```{r new_data.summary}
+new_data |> summary()
+```
+
+# Eksplorasi Data
+
+Banyak mahasiswa per hari:
+
+```{r students.per.day}
+students.per.day <-
+  new_data |>
+  select(Student.ID, Date, Attendance.Status) |>
+  group_by(Date, Attendance.Status) |>
+  summarise(Count = n(), .groups = "drop") |>
+  pivot_wider(names_from = Attendance.Status, values_from = Count, values_fill = 0) |>
+  (\(df) mutate(df, Total = rowSums(select(df, -Date), na.rm = TRUE)))()
+
+students.per.day
+```
+
+```{r students.per.day.plot}
+# Assume 'attendance_summary' is your summary data frame
+# First, reshape the data to a long format
+students.per.day.long <- students.per.day |>
+  pivot_longer(
+    cols = -c(Date, Total),
+    names_to = "Attendance.Status",
+    values_to = "Count"
+  )
+
+# Create a stacked bar plot
+plot <- ggplot(students.per.day.long, aes(x = Date, y = Count, fill = Attendance.Status)) +
+  geom_bar(stat = "identity") + # Use identity to avoid counting
+  labs(
+    title = "Attendance by Date",
+    x = "Date",
+    y = "Number of Students",
+    fill = "Attendance Status"
+  ) +
+  theme_minimal() + # Use a clean theme
+  scale_fill_brewer(palette = "Set1") # Optional: Chooses a color palette
+
+# Display the plot
+print(plot)
+```
+
+
+<!--
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+-->
