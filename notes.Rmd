@@ -113,7 +113,7 @@ new_data |> summary()
 
 # Eksplorasi Data
 
-Banyak mahasiswa per hari:
+## Banyak mahasiswa per hari berdasarkan kehadiran
 
 ```{r students.per.day}
 students.per.day <-
@@ -138,7 +138,7 @@ students.per.day.long <- students.per.day |>
   )
 
 # Create a stacked bar plot
-plot <- ggplot(students.per.day.long, aes(x = Date, y = Count, fill = Attendance.Status)) +
+students.per.day.plot <- ggplot(students.per.day.long, aes(x = Date, y = Count, fill = Attendance.Status)) +
   geom_bar(stat = "identity") + # Use identity to avoid counting
   labs(
     title = "Attendance by Date",
@@ -150,7 +150,57 @@ plot <- ggplot(students.per.day.long, aes(x = Date, y = Count, fill = Attendance
   scale_fill_brewer(palette = "Set1") # Optional: Chooses a color palette
 
 # Display the plot
-print(plot)
+print(students.per.day.plot)
+```
+
+## Tingkat kehadiran mahasiswa berdasarkan tingkat risiko kesehatan 
+
+```{r attendance.by.risk}
+attendance.by.risk <-
+  new_data |>
+  select(Student.ID, Risk.Level, Attendance.Status) |>
+  group_by(Risk.Level, Attendance.Status) |>
+  summarise(Count = n(), .groups = "drop")
+
+attendance.by.risk.wide <- attendance.by.risk |> pivot_wider(names_from = Risk.Level, values_from = Count, values_fill = 0)
+
+attendance.by.risk.wide
+```
+```{r attendance.by.risk.plot}
+attendance.by.risk.plot <- attendance.by.risk |>
+  ggplot(aes(x = Risk.Level, y = Count, fill = Attendance.Status)) +
+  geom_bar(stat = "identity", position = position_dodge2(preserve = "single")) + # Use identity to avoid counting
+  labs(
+    title = "Attendance by Risk",
+    x = "Risk Level",
+    y = "Number of Students",
+    fill = "Attendance Status",
+  ) +
+  theme_minimal() + # Use a clean theme
+  scale_fill_brewer(palette = "Set1") # Optional: Chooses a color palette
+
+# Display the plot
+print(attendance.by.risk.plot)
+```
+
+## Korelasi antara durasi jam kuliah dan durasi jam tidur
+
+```{r class.and.sleep.plot}
+class.and.sleep.plot <- new_data |>
+  select(Class.Duration, Sleep.Hours, Risk.Level) |>
+  ggplot(aes(x = Class.Duration, y = Sleep.Hours)) +
+  geom_point(aes(color = Risk.Level)) + # Add points
+  labs(
+    title = "Correlation Between Class Duration and Sleep Hours",
+    x = "Class Duration (Hours)",
+    y = "Sleep Hours",
+    color = "Risk Level"
+  ) +
+  theme_minimal() + # Use a clean theme
+  scale_color_brewer(palette = "Set1") + # Optional: Choose a color palette
+  facet_wrap(~Risk.Level) # Create a separate plot for each risk level
+
+show(class.and.sleep.plot)
 ```
 
 
