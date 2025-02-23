@@ -7,26 +7,324 @@ output:
     toc: true
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+# Pendahuluan
+
+# Persiapan
+
+## Memuat library
+
+```{r setup, message = FALSE, warning = FALSE}
+library(dplyr)
+library(purrr)
+library(ggplot2)
+library(tidyverse)
+library(tidyr)
+library(moments) # untuk skewness dan kurtosis
+library(car) # untuk analisis statistik
+library(nortest) # untuk uji normalitas
+library(ggpubr) # untuk visualisasi statistik
+
+# set the figure options
+knitr::opts_chunk$set(
+  fig.width = 7,
+  fig.height = 3.5,
+  fig.align = "center"
+)
+
+# set ggplot2 default theme
+theme_set(theme_minimal())
 ```
 
-## R Markdown
+## Memuat data
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Dataset yang digunakan adalah [Student Health and Attendance Data](https://www.kaggle.com/datasets/ziya07/student-health-and-attendance-data). Berikut perintah `bash` untuk mengecek kesamaan file.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{bash checksum}
+cd "Student Health and Attendance Data/"
+sha1sum *
 ```
 
-## Including Plots
+Kedua file sama, jadi cukup satu yang digunakan, yaitu `student_monnitoring_data.csv`.
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r read.csv}
+data <- read.csv("Student Health and Attendance Data/student_monnitoring_data.csv")
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r sum.is.na}
+sum(is.na(data))
+```
+
+Tidak ada data kosong dalam dataset, sehingga tidak perlu dibersihkan.
+
+Berikut 10 data pertama dan 10 data terakhir dari dataset.
+
+```{r data.head}
+data |> head(10)
+```
+
+```{r data.tail}
+data |> tail(10)
+```
+
+```{r data.summary}
+data |> summary()
+```
+
+## Transformasi data
+
+Selanjutnya, data di atas diproses dengan mengubah tipe data:
+
+- Date (Date)
+- Class.Time &rarr; Start.Time (POSIXct), End.Time (POSIXct)
+- Attendance.Status &rarr; (Factor)
+- Risk.Level &rarr; (Factor)
+
+Selain itu, terdapat data yang ditambahkan:
+
+- Class.Duration (Numeric), jeda waktu antara Start.Time dan End.Time dalam satuan jam. Operasi pengurangan dengan data tersebut sebenarnya memanggil fungsi "difftime" dan secara bawaan menghasilkan keluaran dalam satuan jam.
+- Start.Hour dan End.Hour (Numeric), waktu mulai dan selesai kelas mahasiswa dalam satuan jam.
+- Attendance.Status.Num (Numeric), nilai numerik untuk status kehadiran (Attendance.Status), dengan ketentuan nilai sebagai berikut:
+  - $\text{AttendanceStatusNum}(\text{Present}) = 0$
+  - $\text{AttendanceStatusNum}(\text{Late}) = 1$
+  - $\text{AttendanceStatusNum}(\text{Absent}) = 2$
+- Risk.Level.Num (Numeric), nilai numerik untuk tingkat risiko kesehatan (Risk.Level), dengan ketentuan nilai sebagai berikut:
+  - $\text{RiskLevelNum}(\text{Low}) = 0$
+  - $\text{RiskLevelNum}(\text{Medium}) = 1$
+  - $\text{RiskLevelNum}(\text{High}) = 2$
+
+
+```{r mutate}
+new_data <- data |>
+  mutate(
+    Student.ID = as.integer(Student.ID),
+    Date = Date |> as.Date(format = "%Y-%m-%d"),
+    Start.Time = Class.Time |> as.character() |> strsplit("-") |> sapply(\(x) x[1]),
+    End.Time = Class.Time |> as.character() |> strsplit("-") |> sapply(\(x) x[2]),
+    Start.Time = paste(Date, Start.Time) |> as.POSIXct(format = "%Y-%m-%d %H:%M"),
+    End.Time = paste(Date, End.Time) |> as.POSIXct(format = "%Y-%m-%d %H:%M"),
+    Start.Hour = as.numeric(format(Start.Time, "%H")),
+    End.Hour = as.numeric(format(End.Time, "%H")),
+    Class.Duration = (End.Time - Start.Time) |> as.numeric(),
+    Stress.Level..GSR. = Stress.Level..GSR. |> as.numeric(),
+    Sleep.Hours = Sleep.Hours |> as.numeric(),
+    Anxiety.Level = Anxiety.Level |> as.numeric(),
+    Mood.Score = Mood.Score |> as.numeric(),
+    Attendance.Status = Attendance.Status |> as.factor(),
+    Attendance.Status.Num = case_when(
+      Attendance.Status == "Present" ~ 0,
+      Attendance.Status == "Late" ~ 1,
+      Attendance.Status == "Absent" ~ 2,
+      TRUE ~ NA_real_  # Handle any unexpected values gracefully
+    ),
+    Risk.Level = Risk.Level |> as.factor(),
+    Risk.Level.Num = case_when(
+      Risk.Level == "Low" ~ 0,
+      Risk.Level == "Medium" ~ 1,
+      Risk.Level == "High" ~ 2,
+      TRUE ~ NA_real_  # Handle any unexpected values gracefully
+    ),
+    .keep = "none"
+  )
+```
+
+Berikut penjelasan dari perubahan di atas:
+
+- "Attendance Status" dan "Risk Level" diubah menjadi tipe Factor karena merupakan data kualitatif/kategorik.
+- "Date" diubah menjadi tipe Date karena merupakan data tanggal.
+- "Class Time" dipecah menjadi dua, yaitu "Start Time" dan "End Time". Data Character dari "Class Time" mula-mula dipecah menjadi dua pada tanda "-" menggunakan fungsi "strsplit()" sehingga "9:00-15:00" berubah menjadi `r strsplit("9:00-15:00", "-") |> paste()`. Masing-masing kemudian digabung dengan Character dari Date sehingga membentuk format "2024-12-01 9:00" yang nantinya dikonversi menjadi tipe waktu POSIXct.
+- Data yang lain diubah ke tipe Numeric karena sudah berupa bilangan.
+- Proses transformasi data menggunakan sintaks baru untuk piping, yaitu `|>`, yang dikenalkan sejak R versi 4.1.
+
+Berikut 10 data pertama dan 10 data terakhir dari dataset yang diubah.
+
+```{r new_data.head}
+new_data |> head(10)
+```
+
+```{r new_data.tail}
+new_data |> tail(10)
+```
+
+```{r new_data.summary}
+new_data |> summary()
+```
+
+## Trivia
+
+- Mahasiswa tetap hadir pada musim liburan Natal.
+
+```{r}
+new_data |>
+  select(Student.ID, Date) |>
+  filter(
+    Date >= as.Date("2024-12-24", format = "%Y-%m-%d"),
+    Date <= as.Date("2024-12-26", format = "%Y-%m-%d"),
+    Student.ID <= 3
+  ) |>
+  show()
+```
+
+# Eksplorasi Data
+
+## Banyak mahasiswa per hari berdasarkan kehadiran
+
+```{r students.per.day}
+students.per.day <-
+  new_data |>
+  select(Student.ID, Date, Attendance.Status) |>
+  group_by(Date, Attendance.Status) |>
+  summarise(Count = n(), .groups = "drop") |>
+  pivot_wider(names_from = Attendance.Status, values_from = Count, values_fill = 0) |>
+  (\(df) mutate(df, Total = rowSums(select(df, -Date), na.rm = TRUE)))()
+
+students.per.day
+```
+
+```{r students.per.day.plot}
+# Assume 'attendance_summary' is your summary data frame
+# First, reshape the data to a long format
+students.per.day.long <- students.per.day |>
+  pivot_longer(
+    cols = -c(Date, Total),
+    names_to = "Attendance.Status",
+    values_to = "Count"
+  )
+
+# Create a stacked bar plot
+students.per.day.plot <- ggplot(
+  students.per.day.long, aes(
+    x = Date, y = Count, fill = Attendance.Status
+  )
+) +
+  geom_bar(stat = "identity") + # Use identity to avoid counting
+  labs(
+    title = "Attendance by Date",
+    x = "Date",
+    y = "Number of Students",
+    fill = "Attendance Status"
+  ) +
+  scale_fill_brewer(palette = "Set1") # Optional: Chooses a color palette
+
+# Display the plot
+print(students.per.day.plot)
+```
+
+```{r students.per.day.summary}
+students.per.day.long |>
+  select(-Date, -Total) |>
+  group_by(Attendance.Status) |>
+  summarise(
+    mean = mean(Count),
+    median = median(Count),
+    stdev = sd(Count),
+    min = min(Count),
+    range = max(Count) - min(Count),
+    max = max(Count),
+    skew = skewness(Count),
+    kurt = kurtosis(Count)
+  )
+```
+
+Tingkat kehadiran, keterlambatan, dan absen relatif imbang hari ke hari. Ini berarti tidak ada banyak hubungan antara status kehadiran dan risiko kesehatan.
+
+## Tingkat kehadiran mahasiswa berdasarkan tingkat risiko kesehatan 
+
+```{r attendance.by.risk}
+attendance.by.risk <-
+  new_data |>
+  select(Student.ID, Risk.Level, Attendance.Status) |>
+  group_by(Risk.Level, Attendance.Status) |>
+  summarise(Count = n(), .groups = "drop")
+attendance.by.risk.wide <- attendance.by.risk |>
+  pivot_wider(names_from = Risk.Level, values_from = Count, values_fill = 0)
+
+attendance.by.risk.wide
+```
+
+```{r attendance.by.risk.plot}
+attendance.by.risk.plot <- attendance.by.risk |>
+  ggplot(aes(x = Risk.Level, y = Count, fill = Attendance.Status)) +
+  # Use identity to avoid counting
+  geom_bar(stat = "identity", position = position_dodge2(preserve = "single")) +
+  labs(
+    title = "Attendance by Risk",
+    x = "Risk Level",
+    y = "Number of Students",
+    fill = "Attendance Status",
+  ) +
+  scale_fill_brewer(palette = "Set1") # Optional: Chooses a color palette
+
+# Display the plot
+print(attendance.by.risk.plot)
+```
+
+Grafik di atas menunjukkan tingkat risiko kesehatan tinggi jika mahasiswa tidak hadir pada kuliah hari itu.
+
+## Faktor-faktor yang mempengaruhi tingkat risiko kesehatan
+
+```{r}
+ggplot(new_data, aes(x = Risk.Level, y = Class.Duration, fill = Risk.Level)) +
+  geom_boxplot() +
+  labs(title = "Class Duration by Risk Level")
+```
+
+```{r}
+ggplot(new_data, aes(x = Risk.Level, y = Sleep.Hours, fill = Risk.Level)) +
+  geom_boxplot() +
+  labs(title = "Sleep Hours by Risk Level")
+```
+
+```{r}
+ggplot(new_data, aes(x = Risk.Level, y = Stress.Level..GSR., fill = Risk.Level)) +
+  geom_boxplot() +
+  labs(title = "Stress Level (GSR) by Risk Level")
+```
+
+```{r}
+ggplot(new_data, aes(x = Risk.Level, y = Anxiety.Level, fill = Risk.Level)) +
+  geom_boxplot() +
+  labs(title = "Anxiety Level by Risk Level")
+```
+
+```{r}
+ggplot(new_data, aes(x = Risk.Level, y = Mood.Score, fill = Risk.Level)) +
+  geom_boxplot() +
+  labs(title = "Mood Score by Risk Level")
+```
+
+```{r}
+ggplot(new_data, aes(x = Risk.Level, y = Start.Hour, fill = Risk.Level)) +
+  geom_boxplot() +
+  labs(title = "Class Start Time by Risk Level")
+```
+
+```{r}
+ggplot(new_data, aes(x = Risk.Level, y = End.Hour, fill = Risk.Level)) +
+  geom_boxplot() +
+  labs(title = "Class End Time by Risk Level")
+```
+
+```{r}
+correlations <- new_data |>
+  select(where(is.numeric)) |>
+  # Exclude Risk.Level.Num to prevent self-correlation
+  # Exclude Student.ID because it's not needed
+  select(-Risk.Level.Num, -Student.ID) |>
+  summarise(
+    across(
+      everything(), ~ cor(.x, new_data$Risk.Level.Num, use = "complete.obs"),
+      .names = "Correlation_{col}"
+    )
+  )
+
+print(correlations)
+```
+
+Lama kuliah per hari dan lama tidur tidak memiliki pengaruh signifikan terhadap tingkat risiko kesehatan. Tetapi, tingkat stress sangat mempengaruhi hasilnya.
+
+Untuk tingkat _anxiety_ dan _mood_, hasilnya sedikit membingungkan. Tingkat risiko medium memiliki tingkat _anxiety_ tertinggi dan _mood_ terendah dari ketiga kategori risiko. Sementara itu, tingkat risiko rendah berada di posisi bawah dan atas berturut-turut dan tinggi berada di tengah-tengah.
+
+Terakhir, waktu mulai kelas berkontribusi terhadap tingkat risiko kesehatan tinggi dan menengah. Waktu selesai kelas tidak memiliki dampak terhadap risiko kesehatan.
+
+# Membuat Model
+

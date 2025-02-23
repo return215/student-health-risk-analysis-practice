@@ -79,6 +79,8 @@ new_data <- data |>
     End.Time = Class.Time |> as.character() |> strsplit("-") |> sapply(\(x) x[2]),
     Start.Time = paste(Date, Start.Time) |> as.POSIXct(format = "%Y-%m-%d %H:%M"),
     End.Time = paste(Date, End.Time) |> as.POSIXct(format = "%Y-%m-%d %H:%M"),
+    Start.Hour = as.numeric(format(Start.Time, "%H")),
+    End.Hour = as.numeric(format(End.Time, "%H")),
     Class.Duration = (End.Time - Start.Time) |> as.numeric(),
     Stress.Level..GSR. = Stress.Level..GSR. |> as.numeric(),
     Sleep.Hours = Sleep.Hours |> as.numeric(),
@@ -127,6 +129,7 @@ students.per.day <-
 students.per.day
 ```
 
+
 ```{r students.per.day.plot}
 # Assume 'attendance_summary' is your summary data frame
 # First, reshape the data to a long format
@@ -153,6 +156,22 @@ students.per.day.plot <- ggplot(students.per.day.long, aes(x = Date, y = Count, 
 print(students.per.day.plot)
 ```
 
+```{r students.per.day.summary}
+students.per.day.long |> select(-Date, -Total) |> group_by(Attendance.Status) |>
+  summarise(
+    mean = mean(Count),
+    median = median(Count),
+    stdev = sd(Count),
+    min = min(Count),
+    range = max(Count) - min(Count),
+    max = max(Count),
+    skew = skewness(Count),
+    kurt = kurtosis(Count)
+  )
+```
+
+Tingkat kehadiran, keterlambatan, dan absen relatif imbang
+
 ## Tingkat kehadiran mahasiswa berdasarkan tingkat risiko kesehatan 
 
 ```{r attendance.by.risk}
@@ -166,6 +185,7 @@ attendance.by.risk.wide <- attendance.by.risk |> pivot_wider(names_from = Risk.L
 
 attendance.by.risk.wide
 ```
+
 ```{r attendance.by.risk.plot}
 attendance.by.risk.plot <- attendance.by.risk |>
   ggplot(aes(x = Risk.Level, y = Count, fill = Attendance.Status)) +
@@ -183,26 +203,210 @@ attendance.by.risk.plot <- attendance.by.risk |>
 print(attendance.by.risk.plot)
 ```
 
-## Korelasi antara durasi jam kuliah dan durasi jam tidur
+Grafik di atas menunjukkan tingkat risiko kesehatan tinggi jika mahasiswa tidak hadir pada kuliah hari itu.
+
+## Faktor-faktor yang mempengaruhi tingkat risiko kesehatan
+
+```{r}
+ggplot(new_data, aes(x = Risk.Level, y = Class.Duration, fill = Risk.Level)) +
+  geom_boxplot() +
+  labs(title = "Class Duration by Risk Level")
+```
+
+```{r}
+ggplot(new_data, aes(x = Risk.Level, y = Sleep.Hours, fill = Risk.Level)) +
+  geom_boxplot() +
+  labs(title = "Sleep Hours by Risk Level")
+```
+
+```{r}
+ggplot(new_data, aes(x = Risk.Level, y = Stress.Level..GSR., fill = Risk.Level)) +
+  geom_boxplot() +
+  labs(title = "Stress Level (GSR) by Risk Level")
+```
+
+```{r}
+ggplot(new_data, aes(x = Risk.Level, y = Anxiety.Level, fill = Risk.Level)) +
+  geom_boxplot() +
+  labs(title = "Anxiety Level by Risk Level")
+```
+
+```{r}
+ggplot(new_data, aes(x = Risk.Level, y = Mood.Score, fill = Risk.Level)) +
+  geom_boxplot() +
+  labs(title = "Mood Score by Risk Level")
+```
+
+```{r}
+ggplot(new_data, aes(x = Risk.Level, y = Start.Hour, fill = Risk.Level)) +
+  geom_boxplot() +
+  labs(title = "Class Start Time by Risk Level")
+```
+
+```{r}
+ggplot(new_data, aes(x = Risk.Level, y = End.Hour, fill = Risk.Level)) +
+  geom_boxplot() +
+  labs(title = "Class End Time by Risk Level")
+```
+
+Lama kuliah per hari dan lama tidur tidak memiliki pengaruh signifikan terhadap tingkat risiko kesehatan. Tetapi, tingkat stress sangat mempengaruhi hasilnya.
+
+Untuk tingkat _anxiety_ dan _mood_, hasilnya sedikit membingungkan. Tingkat risiko medium memiliki tingkat _anxiety_ tertinggi dan _mood_ terendah dari ketiga kategori risiko. Sementara itu, tingkat risiko rendah berada di posisi bawah dan atas berturut-turut dan tinggi berada di tengah-tengah.
+
+
+## [OMIT] Korelasi antara durasi jam kuliah dan durasi jam tidur
+
+```{r desc_class.duration_sleep.hours}
+# Assuming your data frame is called 'new_data'
+# Basic descriptive statistics
+desc_stats <- new_data |>
+  summarize(
+    Mean_Class_Duration = mean(Class.Duration, na.rm = TRUE),
+    Median_Class_Duration = median(Class.Duration, na.rm = TRUE),
+    SD_Class_Duration = sd(Class.Duration, na.rm = TRUE),
+    Range_Class_Duration = range(Class.Duration, na.rm = TRUE),
+
+    Mean_Sleep_Hours = mean(Sleep.Hours, na.rm = TRUE),
+    Median_Sleep_Hours = median(Sleep.Hours, na.rm = TRUE),
+    SD_Sleep_Hours = sd(Sleep.Hours, na.rm = TRUE),
+    Range_Sleep_Hours = range(Sleep.Hours, na.rm = TRUE)
+  )
+
+print(desc_stats)
+```
+
+```{r corr}
+# Correlation between Class.Duration and Sleep.Hours
+correlation <- cor(new_data$Class.Duration, new_data$Sleep.Hours, use = "complete.obs")
+print(paste("Correlation coefficient between Class Duration and Sleep Hours:", correlation))
+```
+
+
+```{r hist_class_duration}
+# Create a histogram for Class.Duration
+hist_class_duration <- ggplot(new_data, aes(x = Class.Duration)) +
+  geom_histogram(binwidth = 0.5, fill = "blue", color = "black", alpha = 0.7) + # Specify the bin width and colors
+  labs(
+    title = "Histogram of Class Duration",
+    x = "Class Duration (Hours)",
+    y = "Frequency"
+  ) +
+  theme_minimal()  # Use a clean theme
+
+# Print the histogram for Class Duration
+print(hist_class_duration)
+```
+
+```{r hist_sleep_hours}
+# Create a histogram for Sleep.Hours
+hist_sleep_hours <- ggplot(new_data, aes(x = Sleep.Hours)) +
+  geom_histogram(binwidth = 0.1, fill = "green", color = "black", alpha = 0.7) + # Specify the bin width and colors
+  labs(
+    title = "Histogram of Sleep Hours",
+    x = "Sleep Hours",
+    y = "Frequency"
+  ) +
+  theme_minimal()  # Use a clean theme
+
+# Print the histogram for Sleep Hours
+print(hist_sleep_hours)
+```
+
+```{r boxplot_class.duration_sleep.hours}
+# Boxplot for Class Duration
+boxplot(new_data$Class.Duration, main="Boxplot of Class Duration", ylab = "Class Duration (Hours)")
+
+# Boxplot for Sleep Hours
+boxplot(new_data$Sleep.Hours, main="Boxplot of Sleep Hours", ylab = "Sleep Hours")
+```
+
+
+```{r class.and.sleep}
+class.and.sleep <- new_data |>
+  select(Class.Duration, Sleep.Hours, Risk.Level) |>
+  group_by(Class.Duration, Sleep.Hours, Risk.Level) |>
+  summarise(Count = n(), .groups = "keep") |>
+  pivot_wider(names_from = Risk.Level, values_from = Count, values_fill = 0)
+  
+show(class.and.sleep)
+```
+
 
 ```{r class.and.sleep.plot}
-class.and.sleep.plot <- new_data |>
-  select(Class.Duration, Sleep.Hours, Risk.Level) |>
-  ggplot(aes(x = Class.Duration, y = Sleep.Hours)) +
-  geom_point(aes(color = Risk.Level)) + # Add points
+class.and.sleep.long <- class.and.sleep |>
+  pivot_longer(cols = -c(Class.Duration, Sleep.Hours), names_to = "Risk.Level", values_to = "Count")
+
+class.and.sleep.plot <- class.and.sleep.long |>
+  ggplot(aes(y = Class.Duration, x = Sleep.Hours)) +
+  geom_point(aes(size = Count, color = Risk.Level), alpha = 0.6) +
+  scale_size(range = c(1, 10), name = "Count of Students") +  # Adjust the range for bubble sizes
   labs(
-    title = "Correlation Between Class Duration and Sleep Hours",
-    x = "Class Duration (Hours)",
-    y = "Sleep Hours",
+    title = "Bubble Plot of Class Duration and Sleep Hours",
+    y = "Class Duration (Hours)",
+    x = "Sleep Hours",
     color = "Risk Level"
   ) +
-  theme_minimal() + # Use a clean theme
+  theme_minimal() +  # Use a clean theme
   scale_color_brewer(palette = "Set1") + # Optional: Choose a color palette
   facet_wrap(~Risk.Level) # Create a separate plot for each risk level
 
 show(class.and.sleep.plot)
 ```
 
+```{r risk.by.class.duration}
+risk.by.class.duration <- new_data |>
+  select(Class.Duration, Risk.Level) |>
+  count(Class.Duration, Risk.Level)
+
+show(risk.by.class.duration)
+```
+
+```{r risk.by.class.duration.plot}
+risk.by.class.duration.plot <- risk.by.class.duration |>
+  ggplot(aes(x = Class.Duration, y = n, fill = Risk.Level)) +
+  geom_bar(stat = "identity", position = position_dodge2(preserve = "single")) + # Use identity to avoid counting
+  labs(
+    title = "Risk by Class Duration",
+    x = "Class Duration",
+    y = "Number of Students",
+    fill = "Risk Level",
+  ) +
+  scale_x_continuous(breaks = seq(1, 8)) +
+  scale_y_continuous(breaks = seq(0, 2000, by = 200)) +
+  theme_minimal() + # Use a clean theme
+  scale_fill_brewer(palette = "Set1") # Optional: Chooses a color palette
+
+# Display the plot
+print(risk.by.class.duration.plot)
+```
+
+
+```{r risk.by.sleep.hours}
+risk.by.sleep.hours <- new_data |>
+  select(Sleep.Hours, Risk.Level) |>
+  count(Sleep.Hours, Risk.Level)
+
+show(risk.by.sleep.hours)
+```
+
+```{r risk.by.sleep.hours.plot}
+risk.by.sleep.hours.plot <- risk.by.sleep.hours |>
+  ggplot(aes(x = Sleep.Hours, y = n, fill = Risk.Level)) +
+  geom_bar(stat = "identity", position = position_dodge2(preserve = "single")) + # Use identity to avoid counting
+  labs(
+    title = "Risk by Class Duration",
+    x = "Sleep Hours",
+    y = "Number of Students",
+    fill = "Risk Level",
+  ) +
+  scale_x_continuous(breaks = seq(5, 10)) +
+  scale_y_continuous(breaks = seq(0, 300, by = 30)) +
+  theme_minimal() + # Use a clean theme
+  scale_fill_brewer(palette = "Set1") # Optional: Chooses a color palette
+
+# Display the plot
+print(risk.by.sleep.hours.plot)
+```
 
 <!--
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
@@ -211,3 +415,6 @@ When you save the notebook, an HTML file containing the code and output will be 
 
 The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
 -->
+
+# Membuat Model
+
