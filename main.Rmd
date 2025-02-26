@@ -1,38 +1,94 @@
 ---
-title: "Analisis Tingkat Risiko Kesehatan Mahasiswa"
+title: "Analisis Komparatif Model Pembelajaran Mesin Untuk Klasifikasi Kesehatan dan Kehadiran Mahasiswa"
 author: "Muhammad Hidayat"
 date: "`r Sys.Date()`"
 output: 
-  pdf_document:
+  pdf_document: 
     toc: true
+    toc_depth: 2
+    number_sections: true
+    latex_engine: xelatex
+    keep_tex: true
+    highlight: pygments
+  github_document: 
+    toc: true
+    toc_depth: 2
+    number_sections: true
+  html_notebook: 
+    toc: true
+    toc_depth: 2
+    number_sections: true
+  html_document:
+    toc: true
+    toc_depth: 2
+    fig_width: 8
+    fig_height: 6
+    number_sections: true
+    keep_md: true
+  word_document: 
+    toc: true
+    toc_depth: 2
+    keep_md: true
 ---
 
 # Pendahuluan
+
+![Ilustrasi dibuat oleh AI [(sumber)](https://pixai.art/artwork/1851317707578583462?utm_source=copy_web)](illustration-ai.png)
+
+Dalam perkuliahan, kesehatan mahasiswa harus dijaga untuk pembelajaran optimal. Menurut penelitian dari Pratama and Nur Zaimah (2024), melakukan aktivitas fisik dapat mengurangi tingkat kecemasan, depresi, serta meningkatkan suasana hati
+dan fungsi kognitif.
 
 # Persiapan
 
 ## Memuat library
 
-```{r setup, message = FALSE, warning = FALSE}
-library(dplyr)
-library(purrr)
-library(ggplot2)
-library(tidyverse)
-library(tidyr)
-library(moments) # untuk skewness dan kurtosis
-library(car) # untuk analisis statistik
-library(nortest) # untuk uji normalitas
-library(ggpubr) # untuk visualisasi statistik
+```{r setup, message = FALSE, warning = FALSE, echo=FALSE}
+# --- Import libraries
 
-# set the figure options
+# Comprehensive Collection of Packages
+library(tidyverse)   # Collection of R packages for data science (includes ggplot2, dplyr, tidyr, etc.)
+
+# Statistical Analysis and Tests
+library(Hmisc)       # Harrell's miscellaneous library, includes advanced statistical functions
+library(moments)     # Moments, skewness, kurtosis computations
+library(car)         # Companion to applied regression, diagnostics
+library(nortest)     # Normality tests
+
+# Data Manipulation and Transformation
+library(dplyr)       # Data manipulation and pipeline operations
+library(tidyr)       # Data tidying and reshaping (e.g., pivot_longer)
+library(purrr)       # Functional programming tools (e.g., map functions)
+library(insight)     # Understanding and managing model insights
+
+# Plotting and Visualization
+library(ggplot2)     # Data visualization and plotting
+library(ggpubr)      # Publication-ready plots (enhancements to ggplot2)
+library(corrplot)    # Visualization for correlation matrices
+
+# Table Formatting
+library(xtable)      # Export tables to LaTeX or HTML
+library(kableExtra)  # Enhancements for 'knitr' tables
+
+# Machine Learning and Modeling
+library(caret)       # ML models and utility functions
+library(nnet)        # Neural networks and multinom for multinomial regression
+library(randomForest)# Random forest algorithms
+library(e1071)       # SVMs and other utilities
+
+# --- Set the figure options
+
+# Set figure size (in inches) and position
 knitr::opts_chunk$set(
   fig.width = 7,
   fig.height = 3.5,
   fig.align = "center"
 )
 
-# set ggplot2 default theme
+# Set ggplot2 default theme
 theme_set(theme_minimal())
+
+# Make tables render properly
+options(knitr.kable.NA = "")
 ```
 
 ## Memuat data
@@ -56,18 +112,62 @@ sum(is.na(data))
 
 Tidak ada data kosong dalam dataset, sehingga tidak perlu dibersihkan.
 
-Berikut 10 data pertama dan 10 data terakhir dari dataset.
+Berikut 10 data pertama dan 10 data terakhir dari dataset. Hanya kolom tertentu yang ditampilkan karena keterbatasan ruang.
 
-```{r data.head}
-data |> head(10)
+```{r data.head, echo=FALSE}
+data |>
+  select(Student.ID, Date, Class.Time, Attendance.Status, Risk.Level) |>
+  head(10) |>
+  kbl(
+    caption = "Data awal (10 pertama)",
+    col.names = c(
+      "SID", "Date", "Class Time", "Att. Status", "Risk Level"
+    )
+  ) |>
+  kable_minimal()
 ```
 
-```{r data.tail}
-data |> tail(10)
+```{r data.tail, echo=FALSE}
+data |>
+  select(Student.ID, Date, Class.Time, Attendance.Status, Risk.Level) |>
+  head(10) |>
+  kbl(
+    caption = "Data awal (10 terakhir)",
+    col.names = c(
+      "SID", "Date", "Class Time", "Att. Status", "Risk Level"
+    )
+  ) |>
+  kable_minimal()
 ```
 
-```{r data.summary}
-data |> summary()
+```{r data.summary, echo=FALSE}
+# TODO fix table
+data |>
+  select(Student.ID, Date, Class.Time, Attendance.Status, Risk.Level) |>
+  summary() |>
+  kbl(
+    caption = "Ringkasan data awal (1)",
+    digits = 2,
+    col.names = c(
+      "SID", "Date", "Class Time", "Att. Status", "Risk Level"
+    )
+  ) |>
+  kable_minimal()
+```
+
+```{r data.summary.2, echo=FALSE}
+# TODO fix table
+data |>
+  select(Stress.Level..GSR., Sleep.Hours, Anxiety.Level, Mood.Score) |>
+  summary() |>
+  kbl(
+    caption = "Ringkasan data awal (2)",
+    digits = 2,
+    col.names = c(
+      "Stress", "Sleep", "Anxiety", "Mood"
+    )
+  ) |>
+  kable_minimal()
 ```
 
 ## Transformasi data
@@ -75,53 +175,46 @@ data |> summary()
 Selanjutnya, data di atas diproses dengan mengubah tipe data:
 
 - Date (Date)
-- Class.Time &rarr; Start.Time (POSIXct), End.Time (POSIXct)
-- Attendance.Status &rarr; (Factor)
-- Risk.Level &rarr; (Factor)
+- Class.Time &rarr; Start.Time (POSIXct), End.Time (POSIXct) "POSIX C Time". Kolom Class.Time akan dihapus karena tidak akan digunakan lagi kedepannya.
+- Attendance.Status &rarr; (Factor), dengan ketentuan nilai sebagai berikut:
+  - $\text{AttendanceStatus}(\text{Present}) = 1$
+  - $\text{AttendanceStatus}(\text{Late}) = 2$
+  - $\text{AttendanceStatus}(\text{Absent}) = 3$
+- Risk.Level &rarr; (Factor), dengan ketentuan nilai sebagai berikut:
+  - $\text{RiskLevelNum}(\text{Low}) = 1$
+  - $\text{RiskLevelNum}(\text{Medium}) = 2$
+  - $\text{RiskLevelNum}(\text{High}) = 3$
 
 Selain itu, terdapat data yang ditambahkan:
 
 - Class.Duration (Numeric), jeda waktu antara Start.Time dan End.Time dalam satuan jam. Operasi pengurangan dengan data tersebut sebenarnya memanggil fungsi "difftime" dan secara bawaan menghasilkan keluaran dalam satuan jam.
 - Start.Hour dan End.Hour (Numeric), waktu mulai dan selesai kelas mahasiswa dalam satuan jam.
-- Attendance.Status.Num (Numeric), nilai numerik untuk status kehadiran (Attendance.Status), dengan ketentuan nilai sebagai berikut:
-  - $\text{AttendanceStatusNum}(\text{Present}) = 0$
-  - $\text{AttendanceStatusNum}(\text{Late}) = 1$
-  - $\text{AttendanceStatusNum}(\text{Absent}) = 2$
-- Risk.Level.Num (Numeric), nilai numerik untuk tingkat risiko kesehatan (Risk.Level), dengan ketentuan nilai sebagai berikut:
-  - $\text{RiskLevelNum}(\text{Low}) = 0$
-  - $\text{RiskLevelNum}(\text{Medium}) = 1$
-  - $\text{RiskLevelNum}(\text{High}) = 2$
-
 
 ```{r mutate}
 new_data <- data |>
   mutate(
-    Student.ID = as.integer(Student.ID),
+    Student.ID = Student.ID |> as.integer(),
     Date = Date |> as.Date(format = "%Y-%m-%d"),
     Start.Time = Class.Time |> as.character() |> strsplit("-") |> sapply(\(x) x[1]),
-    End.Time = Class.Time |> as.character() |> strsplit("-") |> sapply(\(x) x[2]),
     Start.Time = paste(Date, Start.Time) |> as.POSIXct(format = "%Y-%m-%d %H:%M"),
+    Start.Hour = Start.Time |> format("%H") |> as.numeric(),
+    End.Time = Class.Time |> as.character() |> strsplit("-") |> sapply(\(x) x[2]),
     End.Time = paste(Date, End.Time) |> as.POSIXct(format = "%Y-%m-%d %H:%M"),
-    Start.Hour = as.numeric(format(Start.Time, "%H")),
-    End.Hour = as.numeric(format(End.Time, "%H")),
+    End.Hour = End.Time |> format("%H") |> as.numeric(),
     Class.Duration = (End.Time - Start.Time) |> as.numeric(),
     Stress.Level..GSR. = Stress.Level..GSR. |> as.numeric(),
     Sleep.Hours = Sleep.Hours |> as.numeric(),
     Anxiety.Level = Anxiety.Level |> as.numeric(),
     Mood.Score = Mood.Score |> as.numeric(),
-    Attendance.Status = Attendance.Status |> as.factor(),
-    Attendance.Status.Num = case_when(
-      Attendance.Status == "Present" ~ 0,
-      Attendance.Status == "Late" ~ 1,
-      Attendance.Status == "Absent" ~ 2,
-      TRUE ~ NA_real_  # Handle any unexpected values gracefully
+    Attendance.Status = Attendance.Status |> as.factor() |> recode_factor(
+      "1" = "Present",
+      "2" = "Late",
+      "3" = "Absent"
     ),
-    Risk.Level = Risk.Level |> as.factor(),
-    Risk.Level.Num = case_when(
-      Risk.Level == "Low" ~ 0,
-      Risk.Level == "Medium" ~ 1,
-      Risk.Level == "High" ~ 2,
-      TRUE ~ NA_real_  # Handle any unexpected values gracefully
+    Risk.Level = Risk.Level |> as.factor() |> recode_factor(
+      "1" = "Low",
+      "2" = "Medium",
+      "3" = "High"
     ),
     .keep = "none"
   )
@@ -129,31 +222,91 @@ new_data <- data |>
 
 Berikut penjelasan dari perubahan di atas:
 
-- "Attendance Status" dan "Risk Level" diubah menjadi tipe Factor karena merupakan data kualitatif/kategorik.
+- "Attendance Status" dan "Risk Level" diubah menjadi tipe Factor karena merupakan data kualitatif/kategorik bertingkat. Tingkatan diatur sebagaimana di atas.
 - "Date" diubah menjadi tipe Date karena merupakan data tanggal.
 - "Class Time" dipecah menjadi dua, yaitu "Start Time" dan "End Time". Data Character dari "Class Time" mula-mula dipecah menjadi dua pada tanda "-" menggunakan fungsi "strsplit()" sehingga "9:00-15:00" berubah menjadi `r strsplit("9:00-15:00", "-") |> paste()`. Masing-masing kemudian digabung dengan Character dari Date sehingga membentuk format "2024-12-01 9:00" yang nantinya dikonversi menjadi tipe waktu POSIXct.
+- "Start Hour" dan "End Hour" mengambil jam dari "Start Time" dan "End Time" berturut-turut.
 - Data yang lain diubah ke tipe Numeric karena sudah berupa bilangan.
 - Proses transformasi data menggunakan sintaks baru untuk piping, yaitu `|>`, yang dikenalkan sejak R versi 4.1.
 
-Berikut 10 data pertama dan 10 data terakhir dari dataset yang diubah.
+Berikut 10 data pertama dan 10 data terakhir dari dataset yang diubah. Sekali lagi, hanya kolom tertentu yang ditampilkan karena keterbatasan ruang.
 
-```{r new_data.head}
-new_data |> head(10)
+```{r new_data.head, echo=FALSE}
+new_data |>
+  select(Student.ID, Date, Start.Time, End.Time, Attendance.Status, Risk.Level) |>
+  head(10) |>
+  kbl(
+    caption = "Data yang diubah (10 pertama)",
+    col.names = c(
+      "SID", "Date", "Start Time", "End Time", "Att. Status", "Risk Level"
+    )
+  ) |>
+  kable_minimal()
 ```
 
-```{r new_data.tail}
-new_data |> tail(10)
+```{r new_data.tail, echo=FALSE}
+new_data |>
+  select(Student.ID, Date, Start.Time, End.Time, Attendance.Status, Risk.Level) |>
+  tail(10) |>
+  kbl(
+    caption = "Data yang diubah (10 terakhir)",
+    col.names = c(
+      "SID", "Date", "Start Time", "End Time", "Att. Status", "Risk Level"
+    )
+  ) |>
+  kable_minimal()
 ```
 
-```{r new_data.summary}
-new_data |> summary()
+```{r new_data.summary, echo=FALSE}
+# TODO fix table
+new_data |>
+  select(Student.ID, Date, Start.Time, Start.Hour) |>
+  summary() |>
+  kbl(
+    caption = "Ringkasan data yang diubah (1)",
+    digits = 2,
+    col.names = c(
+      "SID", "Date", "Start Time", "(h)"
+    )
+  ) |>
+  kable_minimal()
+```
+
+```{r new_data.summary.2, echo=FALSE}
+# TODO fix table
+new_data |>
+  select(End.Time, End.Hour, Attendance.Status, Risk.Level) |>
+  summary() |>
+  kbl(
+    caption = "Ringkasan data yang diubah (2)",
+    digits = 2,
+    col.names = c(
+      "End Time", "(h)", "Att. Status", "Risk Level"
+    )
+  ) |>
+  kable_minimal()
+```
+
+```{r new_data.summary.3, echo=FALSE}
+# TODO fix table
+new_data |>
+  select(Class.Duration, Stress.Level..GSR., Sleep.Hours, Anxiety.Level, Mood.Score) |>
+  summary() |>
+  kbl(
+    caption = "Ringkasan data yang diubah (3)",
+    digits = 2,
+    col.names = c(
+      "Duration (h)", "Stress", "Sleep", "Anxiety", "Mood"
+    )
+  ) |>
+  kable_minimal()
 ```
 
 ## Trivia
 
 - Mahasiswa tetap hadir pada musim liburan Natal.
 
-```{r}
+```{r, echo=FALSE}
 new_data |>
   select(Student.ID, Date) |>
   filter(
@@ -161,14 +314,42 @@ new_data |>
     Date <= as.Date("2024-12-26", format = "%Y-%m-%d"),
     Student.ID <= 3
   ) |>
-  show()
+  kbl(
+    caption = "Kehadiran masa liburan Natal",
+    digits = 2,
+  ) |>
+  kable_minimal()
 ```
 
 # Eksplorasi Data
 
+<!--
+## Banyak entri unik
+
+Entri unik di sini mempertimbangkan semua kolom kecuali ID mahasiswa dan tanggal kelas. Untuk waktu masuk dan selesai, hanya jam yang diperhitungkan.
+
+```{r uniq.entries, echo=FALSE}
+uniq.entries <-
+  new_data |>
+  select(-Student.ID, -Date, -Start.Time, -End.Time) |>
+  unique()
+
+uniq.entries |>
+  head(10) |>
+  kbl(digits = 2, caption = "Entri Unik (10 pertama)", ) |>
+  kable_minimal()
+```
+
+```{r}
+uniq.entries |> count()
+```
+
+Secara keseluruhan, terdapat `uniq.entries |> count()`.
+-->
+
 ## Banyak mahasiswa per hari berdasarkan kehadiran
 
-```{r students.per.day}
+```{r students.per.day, echo=FALSE}
 students.per.day <-
   new_data |>
   select(Student.ID, Date, Attendance.Status) |>
@@ -177,10 +358,16 @@ students.per.day <-
   pivot_wider(names_from = Attendance.Status, values_from = Count, values_fill = 0) |>
   (\(df) mutate(df, Total = rowSums(select(df, -Date), na.rm = TRUE)))()
 
-students.per.day
+students.per.day |>
+  head(n = 5) |>
+  kbl(
+    caption = "Kehadiran per hari (5 hari pertama)",
+    digits = 2,
+  ) |>
+  kable_minimal()
 ```
 
-```{r students.per.day.plot}
+```{r students.per.day.plot, echo=FALSE}
 # Assume 'attendance_summary' is your summary data frame
 # First, reshape the data to a long format
 students.per.day.long <- students.per.day |>
@@ -198,10 +385,10 @@ students.per.day.plot <- ggplot(
 ) +
   geom_bar(stat = "identity") + # Use identity to avoid counting
   labs(
-    title = "Attendance by Date",
-    x = "Date",
-    y = "Number of Students",
-    fill = "Attendance Status"
+    title = "Kehadiran per Hari",
+    x = "Tanggal",
+    y = "Banyak Mahasiswa",
+    fill = "Status Kehadiran"
   ) +
   scale_fill_brewer(palette = "Set1") # Optional: Chooses a color palette
 
@@ -209,7 +396,7 @@ students.per.day.plot <- ggplot(
 print(students.per.day.plot)
 ```
 
-```{r students.per.day.summary}
+```{r students.per.day.summary, echo=FALSE}
 students.per.day.long |>
   select(-Date, -Total) |>
   group_by(Attendance.Status) |>
@@ -222,14 +409,18 @@ students.per.day.long |>
     max = max(Count),
     skew = skewness(Count),
     kurt = kurtosis(Count)
-  )
+  ) |>
+  kbl(
+    caption = "Ringkasan statistik kehadiran mahasiswa", 
+    digits = 2,
+  ) |>
+  kable_minimal()
 ```
-
 Tingkat kehadiran, keterlambatan, dan absen relatif imbang hari ke hari. Ini berarti tidak ada banyak hubungan antara status kehadiran dan risiko kesehatan.
 
 ## Tingkat kehadiran mahasiswa berdasarkan tingkat risiko kesehatan 
 
-```{r attendance.by.risk}
+```{r attendance.by.risk, echo=FALSE}
 attendance.by.risk <-
   new_data |>
   select(Student.ID, Risk.Level, Attendance.Status) |>
@@ -238,73 +429,77 @@ attendance.by.risk <-
 attendance.by.risk.wide <- attendance.by.risk |>
   pivot_wider(names_from = Risk.Level, values_from = Count, values_fill = 0)
 
-attendance.by.risk.wide
+attendance.by.risk.wide |>
+  kbl(
+    caption = "Tabel kehadiran berdasarkan tingkat risiko",
+    digits = 2,
+  ) |>
+  kable_minimal()
 ```
 
-```{r attendance.by.risk.plot}
+```{r attendance.by.risk.plot, echo=FALSE}
 attendance.by.risk.plot <- attendance.by.risk |>
   ggplot(aes(x = Risk.Level, y = Count, fill = Attendance.Status)) +
   # Use identity to avoid counting
   geom_bar(stat = "identity", position = position_dodge2(preserve = "single")) +
   labs(
-    title = "Attendance by Risk",
-    x = "Risk Level",
-    y = "Number of Students",
-    fill = "Attendance Status",
+    title = "Kehadiran per Risiko Kesehatan",
+    x = "Tingkat Risiko",
+    y = "Banyak Mahasiswa",
+    fill = "Status Kehadiran",
   ) +
   scale_fill_brewer(palette = "Set1") # Optional: Chooses a color palette
 
 # Display the plot
 print(attendance.by.risk.plot)
 ```
-
 Grafik di atas menunjukkan tingkat risiko kesehatan tinggi jika mahasiswa tidak hadir pada kuliah hari itu.
 
 ## Faktor-faktor yang mempengaruhi tingkat risiko kesehatan
 
-```{r}
+```{r, echo=FALSE}
 ggplot(new_data, aes(x = Risk.Level, y = Class.Duration, fill = Risk.Level)) +
   geom_boxplot() +
   labs(title = "Class Duration by Risk Level")
 ```
 
-```{r}
+```{r, echo=FALSE}
 ggplot(new_data, aes(x = Risk.Level, y = Sleep.Hours, fill = Risk.Level)) +
   geom_boxplot() +
   labs(title = "Sleep Hours by Risk Level")
 ```
 
-```{r}
+```{r, echo=FALSE}
 ggplot(new_data, aes(x = Risk.Level, y = Stress.Level..GSR., fill = Risk.Level)) +
   geom_boxplot() +
   labs(title = "Stress Level (GSR) by Risk Level")
 ```
 
-```{r}
+```{r, echo=FALSE}
 ggplot(new_data, aes(x = Risk.Level, y = Anxiety.Level, fill = Risk.Level)) +
   geom_boxplot() +
   labs(title = "Anxiety Level by Risk Level")
 ```
 
-```{r}
+```{r, echo=FALSE}
 ggplot(new_data, aes(x = Risk.Level, y = Mood.Score, fill = Risk.Level)) +
   geom_boxplot() +
   labs(title = "Mood Score by Risk Level")
 ```
 
-```{r}
+```{r, echo=FALSE}
 ggplot(new_data, aes(x = Risk.Level, y = Start.Hour, fill = Risk.Level)) +
   geom_boxplot() +
   labs(title = "Class Start Time by Risk Level")
 ```
 
-```{r}
+```{r, echo=FALSE}
 ggplot(new_data, aes(x = Risk.Level, y = End.Hour, fill = Risk.Level)) +
   geom_boxplot() +
   labs(title = "Class End Time by Risk Level")
 ```
-
-```{r}
+<!--
+```{r correlation list, eval=FALSE}
 correlations <- new_data |>
   select(where(is.numeric)) |>
   # Exclude Risk.Level.Num to prevent self-correlation
@@ -316,15 +511,310 @@ correlations <- new_data |>
       .names = "Correlation_{col}"
     )
   )
+```
+-->
+```{r correlation matrix, echo=FALSE}
+correlations <- new_data |>
+  mutate(
+    .keep = "none",
+    AS = Attendance.Status |> as.numeric(),
+    CD = Class.Duration,
+    SH = Start.Hour,
+    EH = End.Hour,
+    SL = Stress.Level..GSR.,
+    AL = Anxiety.Level,
+    MS = Mood.Score,
+    SH = Sleep.Hours,
+    RL = Risk.Level |> as.numeric()
+    ) |>
+  cor()
 
-print(correlations)
+correlations |>
+  kbl(digits = 2, caption = "Tabel Korelasi Antar Variabel", ) |>
+  kable_minimal()
 ```
 
-Lama kuliah per hari dan lama tidur tidak memiliki pengaruh signifikan terhadap tingkat risiko kesehatan. Tetapi, tingkat stress sangat mempengaruhi hasilnya.
+```{r correlation matrix plot, fig.height = 7, echo=FALSE}
+corrplot(correlations,
+  method = "color", addCoef.col = "black", addCoefasPercent = TRUE, 
+  diag = FALSE,
+)
+```
 
-Untuk tingkat _anxiety_ dan _mood_, hasilnya sedikit membingungkan. Tingkat risiko medium memiliki tingkat _anxiety_ tertinggi dan _mood_ terendah dari ketiga kategori risiko. Sementara itu, tingkat risiko rendah berada di posisi bawah dan atas berturut-turut dan tinggi berada di tengah-tengah.
-
-Terakhir, waktu mulai kelas berkontribusi terhadap tingkat risiko kesehatan tinggi dan menengah. Waktu selesai kelas tidak memiliki dampak terhadap risiko kesehatan.
+Status kehadiran dan tingkat stres mahasiswa berperan besar terhadap tingginya risiko kesehatan mahasiswa. Sementara itu, tingkat _anxiety_ dan _mood_ juga berpengaruh, meskipun tidak sebesar sebelumnya.
 
 # Membuat Model
 
+## Persiapan data pelatihan
+
+Untuk hasil yang konsisten dalam percobaan ini, digunakan seed tertentu untuk melakukan operasi.
+
+```{r set.seed(1740812399)}
+# 1740812400 adalah 28 Februari 2025, 23:59:59 WIB
+set.seed(1740812399)
+```
+
+Normalisasi data
+
+```{r normalize_data}
+new_data_just_numbers <- new_data |>
+  mutate_all(as.numeric)
+new_data_just_numbers$Risk.Level <- new_data$Risk.Level
+
+normalized_data_values <- new_data_just_numbers |> 
+  preProcess(method = c("center", "scale"))
+
+normalized_data <- predict(normalized_data_values, new_data_just_numbers)
+```
+
+Pembentukan dua data:
+
+1. Data yang mencakup semua variabel.
+2. Data yang hanya melibatkan kolom-kolom yang berpengaruh terhadap tingkat risiko kesehatan.
+
+```{r two_train_data}
+numeric_data <- normalized_data
+
+selected_data <- normalized_data |>
+  select(
+    Risk.Level,
+    Attendance.Status,
+    Stress.Level..GSR.,
+    Anxiety.Level,
+    Mood.Score
+  )
+```
+
+Pembagian data ke dalam dua kelompok. Digunakan partisi yang sama untuk data lengkap dan data terpilih.
+
+```{r train_index}
+train_index <- createDataPartition(new_data$Risk.Level, p = 0.8, list = FALSE)
+numeric_train_data <- numeric_data[train_index, ]
+numeric_test_data <- numeric_data[-train_index, ]
+selected_train_data <- selected_data[train_index, ]
+selected_test_data <- selected_data[-train_index, ]
+```
+
+## Menentukan model
+
+Untuk permasalahan klasifikasi seperti ini, tiga model akan diuji, yaitu Multinomial Logistic Regression, Random Forest, dan Support Vector Machines.
+
+## Proses pelatihan
+
+```{r logistics, cache=TRUE}
+logit_model_numeric <- multinom(
+  Risk.Level ~ .,
+  data = numeric_train_data, trace = FALSE
+)
+logit_model_selected <- multinom(
+  Risk.Level ~ .,
+  data = selected_train_data, trace = FALSE
+)
+```
+
+```{r rf, cache=TRUE}
+rf_model_numeric <- randomForest(
+  Risk.Level ~ .,
+  data = numeric_train_data, 
+  ntree = 5,
+  mtry = 2
+)
+
+rf_model_selected <- randomForest(
+  Risk.Level ~ .,
+  data = selected_train_data, 
+  ntree = 5,
+  mtry = 2
+)
+```
+
+```{r svm, cache=TRUE}
+svm_model_numeric <- svm(
+  Risk.Level ~ .,
+  data = numeric_train_data, kernel = "radial"
+)
+svm_model_selected <- svm(
+  Risk.Level ~ .,
+  data = selected_train_data, kernel = "radial"
+)
+```
+
+## Evaluasi model
+
+Model dievaluasi dengan dua kriteria: akurasi dan lama prediksi.
+
+```{r model_evaluation}
+# Evaluate models with predictions
+evaluate_model <- function(model, testData, model_name) {
+  # Measure the time taken to make the predictions
+  prediction_time <- system.time({
+    predictions <- predict(model, newdata = testData)
+  })['elapsed']  # Extract the elapsed time
+  
+  # Calculate the confusion matrix
+  cm <- confusionMatrix(predictions, testData$Risk.Level)
+  
+  # Extract the accuracy
+  accuracy <- cm$overall['Accuracy']
+  
+  # Return a list including the model name, accuracy, model object, and prediction time
+  return(list(
+    ModelName = model_name,
+    Accuracy = accuracy,
+    PredictionTime = prediction_time,
+    ModelObject = model
+  ))
+}
+
+# Initialize results data frame
+results <- list(
+  evaluate_model(
+    logit_model_numeric, numeric_test_data, "MLR (All Fields)"
+  ),
+  evaluate_model(
+    logit_model_selected, selected_test_data, "MLR (Selected Fields)"
+  ),
+  evaluate_model(
+    rf_model_numeric, numeric_test_data, "RF (All Fields)"
+  ),
+  evaluate_model(
+    rf_model_selected, selected_test_data, "RF (Selected Fields)"
+  ),
+  evaluate_model(
+    svm_model_numeric, numeric_test_data, "SVM (All Fields)"
+  ),
+  evaluate_model(
+    svm_model_selected, selected_test_data, "SVM (Selected Fields)"
+  )
+)
+```
+
+```{r calculate_results}
+# Arcade-style million scoring multiplier
+score_scale <- 1000000
+
+# Convert results into a data frame for easier handling
+results_df <- data.frame(
+  Model = sapply(results, function(x) x$ModelName),
+  Accuracy = sapply(results, function(x) x$Accuracy * score_scale),
+  PredictionTime = sapply(results, function(x) x$PredictionTime * score_scale)
+)
+
+# Normalize accuracy and prediction time
+results_df$NormAccuracy <-
+  results_df$Accuracy / max(results_df$Accuracy) * score_scale
+results_df$NormPredictionTime <-
+  (max(results_df$PredictionTime) - (results_df$PredictionTime)) /
+  (max(results_df$PredictionTime) - min(results_df$PredictionTime)) * 
+  score_scale
+
+# Combine the metrics
+accuracy_weight <- 0.9
+predictiontime_weight <- 0.1
+results_df$CompositeScore <-
+  (accuracy_weight * results_df$NormAccuracy) +
+  (predictiontime_weight * results_df$NormPredictionTime)
+
+# Print results
+results_df |>
+  kbl(digits = 0, caption = "Tabel Akurasi dan Waktu Prediksi Model", ) |>
+  kable_minimal()
+```
+
+Untuk evaluasi, $R^2$ dan $RMSE$ tidak bisa digunakan untuk soal klasifikasi, karena lebih cocok untuk masalah regresi.
+
+```{r visual_evaluation_accuracy}
+# Visualize model accuracies
+ggplot(results_df, aes(x = Model, y = Accuracy, fill = Model)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  coord_cartesian(ylim = c(750000, 1000000)) +
+  labs(title = "Akurasi Model", y = "Accuracy", x = "Model")
+```
+
+```{r visual_evaluation_predictiontime}
+# TODO change to log scale
+# Visualize model accuracies
+ggplot(results_df, aes(x = Model, y = PredictionTime, fill = Model)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  coord_cartesian(ylim = c(1e+03, 2e+06)) +
+  scale_y_log10() +
+  labs(title = "Waktu Prediksi Model", y = "Prediction Time", x = "Model")
+```
+
+```{r winner}
+# Determine the best model
+best_model_index <- which.max(results_df$CompositeScore)
+best_model_name <- results_df$Model[best_model_index]
+best_model_kind <- ((best_model_index - 1) %% 2) + 1
+print(paste("Best Model:", best_model_name))
+```
+
+```{r winner_showcase, echo=FALSE}
+# Retrieve the model object of the best model
+best_model_object <- results[[best_model_index]]$ModelObject
+
+test_data_kind_list <- list(numeric_test_data, selected_test_data)
+test_data <- test_data_kind_list[[best_model_kind]]
+# Visualize predictions of the best model
+best_predictions <- predict(best_model_object, newdata = test_data)
+
+# Print the confusion matrix for the best model
+best_confusion_matrix <- confusionMatrix(best_predictions, test_data$Risk.Level)
+```
+
+```{r winner_confusion_matrix, fig.width=5, fig.height=5, echo=FALSE}
+# https://developer.ibm.com/tutorials/awb-confusion-matrix-r/
+
+best_confusion_matrix$table |> as.data.frame() |>
+  ggplot(aes(x = Prediction, y = Reference, fill = Freq)) +
+  geom_tile() + 
+  theme_bw() +
+  coord_equal() +
+  scale_fill_distiller(palette = "Blues", direction = 1) +
+  guides(fill = FALSE) +
+  geom_text(aes(label = Freq), color = "black", size = 8) +
+  # following lines only increase text size (optional)
+  theme(axis.text.x = element_text(size = 16),
+        axis.text.y = element_text(size = 16),
+        axis.title.x = element_text(size = 24),
+        axis.title.y = element_text(size = 24))
+```
+
+```{r winner_show_by_class, echo=FALSE}
+best_confusion_matrix$byClass |>
+  kbl(
+    digits = 6, 
+    caption = "Tabel Prediksi Per Tingkat Risiko", 
+    col.names = c(
+      "Sens",
+      "Spec",
+      "+ p-v",
+      "- p-v",
+      "Prec",
+      "Recl",
+      "F1",
+      "Prev",
+      "DetR",
+      "DetP",
+      "Accr"
+    ),
+  ) |>
+  kable_minimal()
+```
+```{r winner_overall, echo=FALSE}
+options(knitr.kable.NA = "N/A")
+kbl(
+  best_confusion_matrix$overall,
+  caption = "Ringkasan Performa Model Terbaik",
+) |>
+  kable_material()
+```
+
+
+# Kesimpulan
+
+# Lampiran: Informasi Sesi R
+
+```{r diagnostics}
+sessionInfo()
+```
