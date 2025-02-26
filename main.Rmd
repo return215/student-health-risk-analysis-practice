@@ -35,8 +35,15 @@ output:
 
 ![Ilustrasi dibuat oleh AI [(sumber)](https://pixai.art/artwork/1851317707578583462?utm_source=copy_web)](illustration-ai.png)
 
-Dalam perkuliahan, kesehatan mahasiswa harus dijaga untuk pembelajaran optimal. Menurut penelitian dari Pratama and Nur Zaimah (2024), melakukan aktivitas fisik dapat mengurangi tingkat kecemasan, depresi, serta meningkatkan suasana hati
-dan fungsi kognitif.
+Dalam perkuliahan, kesehatan mahasiswa harus dijaga untuk pembelajaran optimal. Menurut penelitian dari Pratama and Nur Zaimah (2024), melakukan aktivitas fisik dapat mengurangi tingkat kecemasan, depresi, serta meningkatkan suasana hati dan fungsi kognitif. Selain kesehatan fisik, kesehatan mental juga perlu diperhatikan dikarenakan kontribusinya terhadap perkembangan dan kesuksesan pola pikir mahasiswa yang bukan hanya berpengaruh secara individual, namun juga dalam kelompok.
+
+Analisis terhadap data kesehatan mampu mendeteksi pola keseharian mahasiswa melalui berbagai faktor dan dapat menentukan tingkat risiko kesehatan mereka. Proses pengambilan keputusan berbasis data dapat menjadi acuan institusi pendidikan untuk meningkatkan kesejahteraan peserta didiknya.
+
+Dengan perkembangan teknologi yang begitu pesat akhir-akhir ini, kecerdasan buatan telah melampaui batas yang semula sulit diraih. Dari membuat makalah lengkap yang terstruktur hingga gambar yang menyerupai lukisan, seperti contoh gambar pada bagian ini, kecerdasan buatan telah menjadi alat untuk membantu manusia mencapai tujuannya. Semua ini berawal dari data yang dipilih dan diolah, yang kemudian dijadikan bahan latihan untuk komputer agar mampu mengambil keputusan yang tepat. Inilah inti dari pembelajaran mesin, atau disebut _machine learning_.
+
+Tujuan dari laporan ini adalah sebagai latihan penulis dalam mengeksplorasi data, memprosesnya sebagai bahan untuk pembelajaran mesin, dan menentukan algoritma dan parameter yang tepat untuk melatih mesin agar mampu memprediksi hasil dengan akurat dan efisien.
+
+Dalam laporan ini, penulis mengacu pada dataset publik yang disediakan oleh Ziya (2024)
 
 # Persiapan
 
