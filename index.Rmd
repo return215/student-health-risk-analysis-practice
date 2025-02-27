@@ -6,13 +6,7 @@ bibliography: [bibliography.bib, packages.bib]
 nocite: '@*'
 csl: apa-no-initials.csl
 output: 
-  bookdown::pdf_document2:
-    toc: true
-    toc_depth: 2
-    number_sections: true
-    latex_engine: xelatex
-    keep_tex: true
-    highlight: pygments
+  bookdown::pdf_document2: default
   github_document: 
     toc: true
     toc_depth: 2
@@ -119,7 +113,7 @@ Dalam perkuliahan, kesehatan mahasiswa harus dijaga untuk pembelajaran optimal. 
 
 Analisis terhadap data kesehatan mampu mendeteksi pola keseharian mahasiswa melalui berbagai faktor dan dapat menentukan tingkat risiko kesehatan mereka. Proses pengambilan keputusan berbasis data dapat menjadi acuan institusi pendidikan untuk meningkatkan kesejahteraan peserta didiknya.
 
-Dengan perkembangan teknologi yang begitu pesat akhir-akhir ini, kecerdasan buatan telah melampaui batas yang semula sulit diraih. Dari membuat makalah lengkap yang terstruktur hingga gambar yang menyerupai lukisan, seperti contoh gambar pada bagian ini, kecerdasan buatan telah menjadi alat untuk membantu manusia mencapai tujuannya. Semua ini berawal dari data yang dipilih dan diolah, yang kemudian dijadikan bahan latihan untuk komputer agar mampu mengambil keputusan yang tepat. Inilah inti dari pembelajaran mesin, atau disebut _machine learning_.
+Dengan perkembangan teknologi yang begitu pesat akhir-akhir ini, kecerdasan buatan telah melampaui batas yang semula sulit diraih. Dari membuat makalah lengkap yang terstruktur hingga gambar yang menyerupai lukisan, seperti contoh gambar pada Figure \@ref{fig:ai-illustration}, kecerdasan buatan telah menjadi alat untuk membantu manusia mencapai tujuannya. Semua ini berawal dari data yang dipilih dan diolah, yang kemudian dijadikan bahan latihan untuk komputer agar mampu mengambil keputusan yang tepat. Inilah inti dari pembelajaran mesin, atau disebut _machine learning_.
 
 Penggunaan teknik dan model pembelajaran mesin terhadap data kesehatan mahasiswa diharapkan dapat membantu mengidentifikasi tanda-tanda risiko pada masing-masing individu. Pembelajaran mesin terutama bermanfaat untuk mengenali pola pada data dengan banyak variabel dengan beragam karakteristik, baik linear, polinomial, eksponensial, maupun fluktuatif. Hasil pengenalan ini nantinya membentuk suatu model yang akan digunakan untuk memprediksi kasus-kasus baru yang belum pernah ditemui sebelumnya. Dengan informasi baru yang didapat, intervensi maupun pencegahan dapat dilakukan oleh pihak terkait.
 
