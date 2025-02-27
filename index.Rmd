@@ -6,12 +6,12 @@ bibliography: [bibliography.bib, packages.bib]
 nocite: '@*'
 csl: apa-no-initials.csl
 output: 
-  bookdown::pdf_document2: default
   bookdown::html_document2: 
     download:
       - ["index.pdf", "PDF"]
     toc_depth: 2
     keep_md: true
+  bookdown::pdf_document2: default
   github_document: 
     toc: true
     toc_depth: 2
@@ -468,6 +468,10 @@ annotate_figure(
 )
 ```
 
+Dari distribusi nilai di atas, terlihat bahwa waktu mulai kuliah dan tingkat stres memiliki hubungan terhadap tingkat risiko secara linier. Sementara itu, tingkat suasana hati dan kekhawatiran menunjukkan hubungan non-linier, dimana tingkat risiko menengah membentuk titik ekstrem di antara tingkat risiko yang lain. Untuk atribut yang lain, mereka menunjukkan hubungan konstan, atau hampir tidak ada hubungan dengan tingkat risiko.
+
+Hubungan non-linier pada tingkat suasana hati dan kekhawatiran perlu dikaji lebih lanjut.
+
 ```{r correlation-matrix, echo=FALSE}
 correlations <- new_data |>
   mutate(
@@ -502,6 +506,8 @@ Status kehadiran dan tingkat stres mahasiswa berperan besar terhadap tingginya r
 
 ## Model Pembelajaran Mesin
 
+Untuk permasalahan klasifikasi seperti ini, tiga model akan diuji, yaitu Multinomial Logistic Regression, Random Forest, dan Support Vector Machines.
+
 ## Metrik Pengukuran Performa Model
 
 ## Persiapan data pelatihan
@@ -521,7 +527,7 @@ new_data_just_numbers <- new_data |>
 new_data_just_numbers$Risk.Level <- new_data$Risk.Level
 
 normalized_data_values <- new_data_just_numbers |> 
-  preProcess(method = c("center", "scale"))
+  preProcess(method = c("center", "scale"), rangeBounds = c(-1,1))
 
 normalized_data <- predict(normalized_data_values, new_data_just_numbers)
 ```
@@ -553,10 +559,6 @@ numeric_test_data <- numeric_data[-train_index, ]
 selected_train_data <- selected_data[train_index, ]
 selected_test_data <- selected_data[-train_index, ]
 ```
-
-## Menentukan model
-
-Untuk permasalahan klasifikasi seperti ini, tiga model akan diuji, yaitu Multinomial Logistic Regression, Random Forest, dan Support Vector Machines.
 
 ## Proses pelatihan
 
