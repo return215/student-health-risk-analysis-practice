@@ -2,8 +2,11 @@
 title: "Analisis Komparatif Model Pembelajaran Mesin Untuk Klasifikasi Kesehatan dan Kehadiran Mahasiswa"
 author: "Muhammad Hidayat"
 date: "`r Sys.Date()`"
+bibliography: [bibliography.bib, packages.bib]
+nocite: '@*'
+csl: apa-no-initials.csl
 output: 
-  pdf_document: 
+  bookdown::pdf_document2:
     toc: true
     toc_depth: 2
     number_sections: true
@@ -14,10 +17,13 @@ output:
     toc: true
     toc_depth: 2
     number_sections: true
-  html_notebook: 
+  pdf_document: 
     toc: true
     toc_depth: 2
     number_sections: true
+    latex_engine: xelatex
+    keep_tex: true
+    highlight: pygments
   html_document:
     toc: true
     toc_depth: 2
@@ -29,27 +35,24 @@ output:
     toc: true
     toc_depth: 2
     keep_md: true
+  bookdown::html_document2:
+    toc: true
+    toc_depth: 2
+    fig_width: 8
+    fig_height: 6
+    number_sections: true
+    keep_md: true
+  html_notebook: 
+    toc: true
+    toc_depth: 2
+    number_sections: true
+  bookdown::word_document2:
+    toc: true
+    toc_depth: 2
+    keep_md: true
 ---
 
-# Pendahuluan
-
-![Ilustrasi dibuat oleh AI [(sumber)](https://pixai.art/artwork/1851317707578583462?utm_source=copy_web)](illustration-ai.png)
-
-Dalam perkuliahan, kesehatan mahasiswa harus dijaga untuk pembelajaran optimal. Menurut penelitian dari Pratama and Nur Zaimah (2024), melakukan aktivitas fisik dapat mengurangi tingkat kecemasan, depresi, serta meningkatkan suasana hati dan fungsi kognitif. Selain kesehatan fisik, kesehatan mental juga perlu diperhatikan dikarenakan kontribusinya terhadap perkembangan dan kesuksesan pola pikir mahasiswa yang bukan hanya berpengaruh secara individual, namun juga dalam kelompok.
-
-Analisis terhadap data kesehatan mampu mendeteksi pola keseharian mahasiswa melalui berbagai faktor dan dapat menentukan tingkat risiko kesehatan mereka. Proses pengambilan keputusan berbasis data dapat menjadi acuan institusi pendidikan untuk meningkatkan kesejahteraan peserta didiknya.
-
-Dengan perkembangan teknologi yang begitu pesat akhir-akhir ini, kecerdasan buatan telah melampaui batas yang semula sulit diraih. Dari membuat makalah lengkap yang terstruktur hingga gambar yang menyerupai lukisan, seperti contoh gambar pada bagian ini, kecerdasan buatan telah menjadi alat untuk membantu manusia mencapai tujuannya. Semua ini berawal dari data yang dipilih dan diolah, yang kemudian dijadikan bahan latihan untuk komputer agar mampu mengambil keputusan yang tepat. Inilah inti dari pembelajaran mesin, atau disebut _machine learning_.
-
-Tujuan dari laporan ini adalah sebagai latihan penulis dalam mengeksplorasi data, memprosesnya sebagai bahan untuk pembelajaran mesin, dan menentukan algoritma dan parameter yang tepat untuk melatih mesin agar mampu memprediksi hasil dengan akurat dan efisien.
-
-Dalam laporan ini, penulis mengacu pada dataset publik yang disediakan oleh Ziya (2024)
-
-# Persiapan
-
-## Memuat library
-
-```{r setup, message = FALSE, warning = FALSE, echo=FALSE}
+```{r setup, include=FALSE}
 # --- Import libraries
 
 # Comprehensive Collection of Packages
@@ -96,7 +99,41 @@ theme_set(theme_minimal())
 
 # Make tables render properly
 options(knitr.kable.NA = "")
+
+knitr::write_bib(file = 'packages.bib')
 ```
+
+# Abstrak {#abstract -}
+
+lorem
+
+# Pendahuluan {#intro}
+
+(ref:ai-illustration-caption) Ilustrasi berjudul "Random Forest Logistics on Support Vector" yang dibuat oleh AI menggunakan [PixAI](https://pixai.art/artwork/1851317707578583462?utm_source=copy_web)
+
+```{r ai-illustration, fig.cap="(ref:ai-illustration-caption)", fig.width=4, fig.height=4}
+knitr::include_graphics("illustration-ai.png")
+```
+
+Dalam perkuliahan, kesehatan mahasiswa harus dijaga untuk pembelajaran optimal. Menurut penelitian dari Pratama and Nur Zaimah [-@pratama_2024_pengaruh], melakukan aktivitas fisik dapat mengurangi tingkat kecemasan, depresi, serta meningkatkan suasana hati dan fungsi kognitif. Selain kesehatan fisik, kesehatan mental juga perlu diperhatikan dikarenakan kontribusinya terhadap perkembangan dan kesuksesan pola pikir mahasiswa yang bukan hanya berpengaruh secara individual, namun juga dalam kelompok.
+
+Analisis terhadap data kesehatan mampu mendeteksi pola keseharian mahasiswa melalui berbagai faktor dan dapat menentukan tingkat risiko kesehatan mereka. Proses pengambilan keputusan berbasis data dapat menjadi acuan institusi pendidikan untuk meningkatkan kesejahteraan peserta didiknya.
+
+Dengan perkembangan teknologi yang begitu pesat akhir-akhir ini, kecerdasan buatan telah melampaui batas yang semula sulit diraih. Dari membuat makalah lengkap yang terstruktur hingga gambar yang menyerupai lukisan, seperti contoh gambar pada bagian ini, kecerdasan buatan telah menjadi alat untuk membantu manusia mencapai tujuannya. Semua ini berawal dari data yang dipilih dan diolah, yang kemudian dijadikan bahan latihan untuk komputer agar mampu mengambil keputusan yang tepat. Inilah inti dari pembelajaran mesin, atau disebut _machine learning_.
+
+Penggunaan teknik dan model pembelajaran mesin terhadap data kesehatan mahasiswa diharapkan dapat membantu mengidentifikasi tanda-tanda risiko pada masing-masing individu. Pembelajaran mesin terutama bermanfaat untuk mengenali pola pada data dengan banyak variabel dengan beragam karakteristik, baik linear, polinomial, eksponensial, maupun fluktuatif. Hasil pengenalan ini nantinya membentuk suatu model yang akan digunakan untuk memprediksi kasus-kasus baru yang belum pernah ditemui sebelumnya. Dengan informasi baru yang didapat, intervensi maupun pencegahan dapat dilakukan oleh pihak terkait.
+
+Tujuan dari laporan ini adalah sebagai latihan penulis dalam mengeksplorasi data, memprosesnya sebagai bahan untuk pembelajaran mesin, dan menentukan algoritma dan parameter yang tepat untuk melatih mesin agar mampu memprediksi hasil dengan akurat dan efisien. Semua tahapan ini dijalankan menggunakan bahasa pemrograman R.
+
+Laporan ini terbagi menjadi beberapa bagian, selain dari bagian ini. [Bagian 2](#data) akan membahas tentang data yang digunakan, pengolahan data untuk eksplorasi data, dan pengolahan data untuk pembelajaran mesin. [Bagian 3](#machine-learn) akan membahas tentang model pembelajaran mesin yang digunakan, parameter yang ditetapkan, serta langkah evaluasi model. [Bagian 4](#results) akan membahas tentang performa model dan menetapkan model terbaik. [Bagian 5](#conclusion).
+
+# Eksplorasi dan Pengolahan Data {#data}
+
+Dalam laporan ini, penulis mengacu pada dataset kesehatan dan kehadiran mahasiswa yang disediakan oleh Ziya [-@ziya_2024_student].
+
+## Memuat library
+
+
 
 ## Memuat data
 
@@ -328,32 +365,6 @@ new_data |>
   kable_minimal()
 ```
 
-# Eksplorasi Data
-
-<!--
-## Banyak entri unik
-
-Entri unik di sini mempertimbangkan semua kolom kecuali ID mahasiswa dan tanggal kelas. Untuk waktu masuk dan selesai, hanya jam yang diperhitungkan.
-
-```{r uniq.entries, echo=FALSE}
-uniq.entries <-
-  new_data |>
-  select(-Student.ID, -Date, -Start.Time, -End.Time) |>
-  unique()
-
-uniq.entries |>
-  head(10) |>
-  kbl(digits = 2, caption = "Entri Unik (10 pertama)", ) |>
-  kable_minimal()
-```
-
-```{r}
-uniq.entries |> count()
-```
-
-Secara keseluruhan, terdapat `uniq.entries |> count()`.
--->
-
 ## Banyak mahasiswa per hari berdasarkan kehadiran
 
 ```{r students.per.day, echo=FALSE}
@@ -423,6 +434,7 @@ students.per.day.long |>
   ) |>
   kable_minimal()
 ```
+
 Tingkat kehadiran, keterlambatan, dan absen relatif imbang hari ke hari. Ini berarti tidak ada banyak hubungan antara status kehadiran dan risiko kesehatan.
 
 ## Tingkat kehadiran mahasiswa berdasarkan tingkat risiko kesehatan 
@@ -460,6 +472,7 @@ attendance.by.risk.plot <- attendance.by.risk |>
 # Display the plot
 print(attendance.by.risk.plot)
 ```
+
 Grafik di atas menunjukkan tingkat risiko kesehatan tinggi jika mahasiswa tidak hadir pada kuliah hari itu.
 
 ## Faktor-faktor yang mempengaruhi tingkat risiko kesehatan
@@ -505,21 +518,7 @@ ggplot(new_data, aes(x = Risk.Level, y = End.Hour, fill = Risk.Level)) +
   geom_boxplot() +
   labs(title = "Class End Time by Risk Level")
 ```
-<!--
-```{r correlation list, eval=FALSE}
-correlations <- new_data |>
-  select(where(is.numeric)) |>
-  # Exclude Risk.Level.Num to prevent self-correlation
-  # Exclude Student.ID because it's not needed
-  select(-Risk.Level.Num, -Student.ID) |>
-  summarise(
-    across(
-      everything(), ~ cor(.x, new_data$Risk.Level.Num, use = "complete.obs"),
-      .names = "Correlation_{col}"
-    )
-  )
-```
--->
+
 ```{r correlation matrix, echo=FALSE}
 correlations <- new_data |>
   mutate(
@@ -550,7 +549,11 @@ corrplot(correlations,
 
 Status kehadiran dan tingkat stres mahasiswa berperan besar terhadap tingginya risiko kesehatan mahasiswa. Sementara itu, tingkat _anxiety_ dan _mood_ juga berpengaruh, meskipun tidak sebesar sebelumnya.
 
-# Membuat Model
+# Metodologi {#machine-learn}
+
+## Model Pembelajaran Mesin
+
+## Metrik Pengukuran Performa Model
 
 ## Persiapan data pelatihan
 
@@ -696,6 +699,8 @@ results <- list(
 )
 ```
 
+# Hasil dan Pembahasan {#results}
+
 ```{r calculate_results}
 # Arcade-style million scoring multiplier
 score_scale <- 1000000
@@ -818,9 +823,15 @@ kbl(
 ```
 
 
-# Kesimpulan
+# Kesimpulan {#conclusion}
 
-# Lampiran: Informasi Sesi R
+# Daftar Pustaka {#bibliography}
+
+<div id="refs"></div>
+
+# (APPENDIX) Lampiran {#appendix -} 
+
+# Informasi Sesi R {#session-info}
 
 ```{r diagnostics}
 sessionInfo()
