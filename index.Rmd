@@ -34,20 +34,18 @@ output:
     toc: true
     toc_depth: 2
     keep_md: true
-  html_notebook: 
-    toc: true
-    toc_depth: 2
-    number_sections: true
 ---
 
 ```{r setup, include=FALSE}
 # --- Import libraries
 
 # Comprehensive Collection of Packages
-library(tidyverse)   # Collection of R packages for data science (includes ggplot2, dplyr, tidyr, etc.)
+library(tidyverse)   # Collection of R packages for data science
+                     # (includes ggplot2, dplyr, tidyr, etc.)
+library(Hmisc)       # Harrell's miscellaneous library, includes
+                     # advanced statistical functions
 
 # Statistical Analysis and Tests
-library(Hmisc)       # Harrell's miscellaneous library, includes advanced statistical functions
 library(moments)     # Moments, skewness, kurtosis computations
 library(car)         # Companion to applied regression, diagnostics
 library(nortest)     # Normality tests
@@ -77,30 +75,32 @@ library(e1071)       # SVMs and other utilities
 
 # Set figure size (in inches) and position
 knitr::opts_chunk$set(
-  fig.width = 7,
-  fig.height = 3.5,
+  fig.width = 5,
+  fig.height = 3,
   fig.align = "center"
 )
 
 # Set ggplot2 default theme
-theme_set(theme_minimal())
+theme_set(theme_minimal(base_size = 9))
 
 # Make tables render properly
 options(knitr.kable.NA = "")
 
-knitr::write_bib(file = 'packages.bib')
+knitr::write_bib(file = "packages.bib")
 ```
 
-# Abstrak {#abstract -}
+# Abstract {#abstract -}
 
-lorem
+_The health of students during classes is pivotal to their success in their day-to-day studies. This report aims to explore the possible factors that correlate to risk levels such as stress levels and attendance status to help optimize the data to be used in machine learning, as well as evaluate three machine learning models -- Logistic Regression, Random Forest, and Support Vector Machines -- under a complete dataset and a dataset optimized using only sufficiently correlated attributes in classifying health risk levels using the public Student Health and Attendance Data dataset. The models were assessed by their accuracy score, their duration during prediction, and their overall composite score to determine their effectiveness. The Random Forest model using the optimized dataset outperforms all other models with perfect accuracy and very fast calculation time, giving most credit to attribute selection in the optimized dataset. The study highlights the performance of Random Forest models of predicting health risk levels in this dataset as well as the benefits gained through careful selection of attributes in its models. Future research should focus on digging into the psychological aspect of stress levels and attendance status, seeking potential improvements across all models, and exploring the use of the Gradient Boosting Classifier model._
+
+_Keywords: Student Health Risk Classification, Student Health Risk Indicators, Exploratory Data Analysis, Machine Learning, Logistic Regression, Random Forest, Support Vector Machines_
 
 # Pendahuluan {#intro}
 
 (ref:ai-illustration-caption) Ilustrasi berjudul "Random Forest Logistics on Support Vector" yang dibuat oleh AI menggunakan [PixAI](https://pixai.art/artwork/1851317707578583462?utm_source=copy_web)
 
-```{r ai-illustration, fig.cap="(ref:ai-illustration-caption)", fig.width=4, fig.height=4, echo=FALSE}
-knitr::include_graphics("illustration-ai.png")
+```{r ai-illustration, fig.cap="(ref:ai-illustration-caption)", echo=FALSE}
+knitr::include_graphics("illustration-ai.png", dpi = 600)
 ```
 
 Dalam perkuliahan, kesehatan mahasiswa harus dijaga untuk pembelajaran optimal. Menurut penelitian dari Pratama and Nur Zaimah [-@pratama_2024_pengaruh], melakukan aktivitas fisik dapat mengurangi tingkat kecemasan, depresi, serta meningkatkan suasana hati dan fungsi kognitif. Selain kesehatan fisik, kesehatan mental juga perlu diperhatikan dikarenakan kontribusinya terhadap perkembangan dan kesuksesan pola pikir mahasiswa yang bukan hanya berpengaruh secara individual, namun juga dalam kelompok.
@@ -111,7 +111,7 @@ Dengan perkembangan teknologi yang begitu pesat akhir-akhir ini, kecerdasan buat
 
 Penggunaan teknik dan model pembelajaran mesin terhadap data kesehatan mahasiswa diharapkan dapat membantu mengidentifikasi tanda-tanda risiko pada masing-masing individu. Pembelajaran mesin terutama bermanfaat untuk mengenali pola pada data dengan banyak variabel dengan beragam karakteristik, baik linear, polinomial, eksponensial, maupun fluktuatif. Hasil pengenalan ini nantinya membentuk suatu model yang akan digunakan untuk memprediksi kasus-kasus baru yang belum pernah ditemui sebelumnya. Dengan informasi baru yang didapat, intervensi maupun pencegahan dapat dilakukan oleh pihak terkait.
 
-Tujuan dari laporan ini adalah sebagai latihan penulis dalam mengeksplorasi data, memprosesnya sebagai bahan untuk pembelajaran mesin, dan menentukan algoritma dan parameter yang tepat untuk melatih mesin agar mampu memprediksi hasil dengan akurat dan efisien. Semua tahapan ini dijalankan menggunakan bahasa pemrograman R.
+Tujuan dari laporan ini adalah sebagai latihan penulis dalam mengeksplorasi data, memprosesnya sebagai bahan untuk pembelajaran mesin, mengoptimalisasi data yang digunakan untuk pembelajaran mesin, dan menentukan algoritma dan parameter yang tepat untuk melatih mesin agar mampu memprediksi hasil dengan akurat dan efisien. Semua tahapan ini dijalankan menggunakan bahasa pemrograman R.
 
 Laporan ini terbagi menjadi beberapa bagian, selain dari bagian ini. [Bagian 2](#data) akan membahas tentang data yang digunakan, pengolahan data untuk eksplorasi data, dan pengolahan data untuk pembelajaran mesin. [Bagian 3](#machine-learn) akan membahas tentang model pembelajaran mesin yang digunakan, parameter yang ditetapkan, serta langkah evaluasi model. [Bagian 4](#results) akan membahas tentang performa model dan menetapkan model terbaik. [Bagian 5](#conclusion) berisikan kesimpulan dari hasil temuan, keterbatasan, serta saran untuk penelitian ke depannya.
 
@@ -134,10 +134,11 @@ Kedua file sama, jadi cukup satu yang digunakan, yaitu `student_monnitoring_data
 data <- read.csv("Student Health and Attendance Data/student_monnitoring_data.csv")
 ```
 
-Lihat Tabel \@ref(tab:data-head) untuk 10 data pertama dan Tabel \@ref(tab:data-tail) untuk 10 data terakhir dari dataset.
+Lihat Tabel \@ref(tab:data-head) untuk 10 data pertama dan Tabel \@ref(tab:data-tail) untuk 10 data terakhir dari dataset. Hanya kolom tertentu yang ditampilkan karena keterbatasan ruang.
 
 ```{r data-head, echo=FALSE}
 data |>
+  select(Student.ID, Date, Class.Time, Attendance.Status, Risk.Level) |>
   head(10) |>
   kbl(
     caption = "Data awal (10 pertama)",
@@ -147,6 +148,7 @@ data |>
 
 ```{r data-tail, echo=FALSE}
 data |>
+  select(Student.ID, Date, Class.Time, Attendance.Status, Risk.Level) |>
   tail(10) |>
   kbl(
     caption = "Data awal (10 terakhir)",
@@ -159,7 +161,9 @@ Tabel \@ref(tab:data-summary) dan \@ref(tab:data-summary-2) memberikan gambaran 
 ```{r data-summary, echo=FALSE}
 # TODO fix table
 data |>
-  select(Student.ID, Stress.Level..GSR., Sleep.Hours, Anxiety.Level, Mood.Score) |>
+  select(
+    Student.ID, Stress.Level..GSR., Sleep.Hours, Anxiety.Level, Mood.Score
+  ) |>
   summary() |>
   kbl(
     caption = "Ringkasan data awal (1)",
@@ -194,8 +198,8 @@ Untuk mempermudah eksplorasi dan pengolahan data lebih lanjut, data di atas dipr
 
 - Date (Date)
 - Class.Time &rarr; Start.Time (POSIXct), End.Time (POSIXct) "POSIX C Time". Kolom Class.Time akan dihapus karena tidak akan digunakan lagi kedepannya.
-- Attendance.Status &rarr; (Factor), dengan ketentuan nilai \(\text{AttendanceStatus} \rightarrow \{1(\text{Present}), 2(\text{Late}), 3(\text{Absent})\}\).
-- Risk.Level &rarr; (Factor), dengan ketentuan nilai \(\text{RiskLevel} \rightarrow \{1(\text{Low}), 2(\text{Medium}), 3(\text{High})\}\).
+- Attendance.Status &rarr; (Factor), dengan ketentuan nilai $\text{AttendanceStatus} \rightarrow \{1(\text{Present}), 2(\text{Late}), 3(\text{Absent})\}$.
+- Risk.Level &rarr; (Factor), dengan ketentuan nilai $\text{RiskLevel} \rightarrow \{1(\text{Low}), 2(\text{Medium}), 3(\text{High})\}$
 
 Selain itu, terdapat data yang ditambahkan:
 
@@ -218,16 +222,20 @@ new_data <- data |>
     Sleep.Hours = Sleep.Hours |> as.numeric(),
     Anxiety.Level = Anxiety.Level |> as.numeric(),
     Mood.Score = Mood.Score |> as.numeric(),
-    Attendance.Status = Attendance.Status |> as.factor() |> recode_factor(
-      "1" = "Present",
-      "2" = "Late",
-      "3" = "Absent"
-    ),
-    Risk.Level = Risk.Level |> as.factor() |> recode_factor(
-      "1" = "Low",
-      "2" = "Medium",
-      "3" = "High"
-    ),
+    Attendance.Status = Attendance.Status |>
+      as.factor() |>
+      recode_factor(
+        "1" = "Present",
+        "2" = "Late",
+        "3" = "Absent"
+      ),
+    Risk.Level = Risk.Level |>
+      as.factor() |>
+      recode_factor(
+        "1" = "Low",
+        "2" = "Medium",
+        "3" = "High"
+      ),
     .keep = "none"
   )
 ```
@@ -241,11 +249,14 @@ Berikut penjelasan dari perubahan di atas:
 - Data yang lain diubah ke tipe Numeric karena sudah berupa bilangan.
 - Proses transformasi data menggunakan sintaks baru untuk piping, yaitu `|>`, yang dikenalkan sejak R versi 4.1.
 
-Berikut Tabel \@ref(tab:new-data-head) untuk 10 data pertama dan Tabel \@ref(tab:new-data-tail) untuk 10 data terakhir dari dataset yang diubah. Hanya kolom tertentu yang ditampilkan karena keterbatasan ruang.
+Berikut Tabel \@ref(tab:new-data-head) untuk 10 data pertama dan Tabel \@ref(tab:new-data-tail) untuk 10 data terakhir dari dataset yang diubah. Sekali iagi, hanya kolom tertentu yang ditampilkan karena keterbatasan ruang.
 
 ```{r new-data-head, echo=FALSE}
 new_data |>
-  select(Student.ID, Start.Time, Start.Hour, End.Time, End.Hour,  Class.Duration, Attendance.Status, Risk.Level) |>
+  select(
+    Student.ID, Start.Time, End.Hour,
+    Class.Duration, Attendance.Status, Risk.Level
+  ) |>
   head(10) |>
   kbl(
     caption = "Data yang diubah (10 pertama)",
@@ -255,7 +266,10 @@ new_data |>
 
 ```{r new-data-tail, echo=FALSE}
 new_data |>
-  select(Student.ID, Start.Time, Start.Hour, End.Time, End.Hour,  Class.Duration, Attendance.Status, Risk.Level) |>
+  select(
+    Student.ID, Start.Time, End.Hour,
+    Class.Duration, Attendance.Status, Risk.Level
+  ) |>
   tail(10) |>
   kbl(
     caption = "Data yang diubah (10 terakhir)",
@@ -263,19 +277,16 @@ new_data |>
   kable_material()
 ```
 
-Tabel \@ref(tab:new-data-summary) dan \@ref(tab:new-data-summary-2) memberikan gambaran bentuk data setelah diolah.
+Tabel \@ref(tab:new-data-summary), \@ref(tab:new-data-summary-2), dan \@ref(tab:new-data-summary-3) memberikan gambaran bentuk data setelah diolah.
 
 ```{r new-data-summary, echo=FALSE}
 # TODO fix table
 new_data |>
-  select(Student.ID, Date, Start.Time, Start.Hour, End.Time, End.Hour) |>
+  select(Student.ID, Date, Start.Time, End.Time) |>
   summary() |>
   kbl(
     caption = "Ringkasan data yang diubah (1)",
     digits = 2,
-    # col.names = c(
-    #   "SID", "Date", "Start Time", "(h)"
-    # )
   ) |>
   kable_material()
 ```
@@ -283,14 +294,23 @@ new_data |>
 ```{r new-data-summary-2, echo=FALSE}
 # TODO fix table
 new_data |>
-  select(Class.Duration, Stress.Level..GSR., Sleep.Hours, Anxiety.Level, Mood.Score, Attendance.Status, Risk.Level) |>
+  select(Start.Hour, End.Hour, Class.Duration, Sleep.Hours, Stress.Level..GSR.) |>
   summary() |>
   kbl(
     caption = "Ringkasan data yang diubah (2)",
     digits = 2,
-    # col.names = c(
-    #   "End Time", "(h)", "Att. Status", "Risk Level"
-    # )
+  ) |>
+  kable_material()
+```
+
+```{r new-data-summary-3, echo=FALSE}
+# TODO fix table
+new_data |>
+  select(Anxiety.Level, Mood.Score, Attendance.Status, Risk.Level) |>
+  summary() |>
+  kbl(
+    caption = "Ringkasan data yang diubah (3)",
+    digits = 2,
   ) |>
   kable_material()
 ```
@@ -325,7 +345,7 @@ students.per.day |>
   kable_material()
 ```
 
-```{r students-per-day-plot, echo=FALSE, fig.cap="Grafik Kehadiran Per Hari"}
+```{r students-per-day-plot, echo=FALSE, fig.cap="Grafik Kehadiran Per Hari", fig.width=7}
 # Assume 'attendance_summary' is your summary data frame
 # First, reshape the data to a long format
 students.per.day.long <- students.per.day |>
@@ -369,13 +389,13 @@ students.per.day.long |>
     kurt = kurtosis(Count)
   ) |>
   kbl(
-    caption = "Ringkasan statistik kehadiran mahasiswa", 
+    caption = "Ringkasan statistik kehadiran mahasiswa",
     digits = 2,
   ) |>
   kable_material()
 ```
 
-Tingkat kehadiran, keterlambatan, dan absen relatif imbang hari ke hari. Banyak mahasiswa secara keseluruhan per hari pun konsisten. Ini berarti tidak ada banyak hubungan antara status kehadiran dan risiko kesehatan dengan pergerakan hari ke hari.
+Tingkat kehadiran, keterlambatan, dan absen relatif imbang hari ke hari. Banyak mahasiswa secara keseluruhan per hari pun konsisten. Ini berarti tidak ada banyak hubungan antara status kehadiran dan risiko kesehatan dengan pergerakan hari ke hari. Selengkapnya, lihat Grafik \@ref(fig:students-per-day-plot) dan Tabel \@ref(tab:students-per-day-summary).
 
 ### Tingkat kehadiran mahasiswa berdasarkan tingkat risiko kesehatan 
 
@@ -413,11 +433,11 @@ attendance.by.risk.plot <- attendance.by.risk |>
 print(attendance.by.risk.plot)
 ```
 
-Grafik di atas menunjukkan tingkat risiko kesehatan tinggi jika mahasiswa tidak hadir pada kuliah hari itu.
+Grafik \@ref(fig:attendance-by-risk-plot) menunjukkan tingkat risiko kesehatan tinggi jika mahasiswa tidak hadir pada kuliah hari itu. Ini berarti terdapat hubungan erat antara status kehadiran dan risiko kesehatan.
 
 ### Faktor-faktor yang mempengaruhi tingkat risiko kesehatan
 
-```{r boxplots, echo=FALSE, fig.width=8, fig.height=7, fig.cap="Grafik Distribusi Atribut Numerik"}
+```{r boxplots, echo=FALSE, fig.width=6, fig.height=5, fig.cap="Grafik Distribusi Atribut Numerik", cache=TRUE}
 box_class.duration <- ggplot(new_data, aes(x = Risk.Level, y = Class.Duration, fill = Risk.Level)) +
   geom_boxplot() +
   labs(title = "Class Duration") +
@@ -468,9 +488,9 @@ annotate_figure(
 )
 ```
 
-Dari distribusi nilai di atas, terlihat bahwa waktu mulai kuliah dan tingkat stres memiliki hubungan terhadap tingkat risiko secara linier. Sementara itu, tingkat suasana hati dan kekhawatiran menunjukkan hubungan non-linier, dimana tingkat risiko menengah membentuk titik ekstrem di antara tingkat risiko yang lain. Untuk atribut yang lain, mereka menunjukkan hubungan konstan, atau hampir tidak ada hubungan dengan tingkat risiko.
+Dari distribusi nilai pada Grafik \@ref(fig:boxplots), terlihat bahwa waktu mulai kuliah dan tingkat stres memiliki hubungan terhadap tingkat risiko secara linear. Sementara itu, tingkat suasana hati dan kekhawatiran menunjukkan hubungan non-linear, dimana tingkat risiko menengah membentuk titik ekstrem di antara tingkat risiko yang lain. Untuk atribut yang lain, mereka menunjukkan hubungan konstan, atau hampir tidak ada hubungan dengan tingkat risiko.
 
-Hubungan non-linier pada tingkat suasana hati dan kekhawatiran perlu dikaji lebih lanjut.
+Hubungan non-linear pada tingkat suasana hati dan kekhawatiran perlu dikaji lebih lanjut. Topik seperti ini lebih mengarah ke ranah psikologi, yang berada di luar cakupan laporan ini.
 
 ```{r correlation-matrix, echo=FALSE}
 correlations <- new_data |>
@@ -485,7 +505,7 @@ correlations <- new_data |>
     MS = Mood.Score,
     SH = Sleep.Hours,
     RL = Risk.Level |> as.numeric()
-    ) |>
+  ) |>
   cor()
 
 correlations |>
@@ -493,51 +513,45 @@ correlations |>
   kable_material()
 ```
 
-```{r correlation-matrix-plot, fig.height = 7, echo=FALSE}
+```{r correlation-matrix-plot, fig.height = 7, echo=FALSE, fig.cap="Grafik matriks korelasi antara variabel numerik"}
 corrplot(correlations,
-  method = "color", addCoef.col = "black", addCoefasPercent = TRUE, 
+  method = "color", addCoef.col = "black", addCoefasPercent = TRUE,
   diag = FALSE,
 )
 ```
 
-Status kehadiran dan tingkat stres mahasiswa berperan besar terhadap tingginya risiko kesehatan mahasiswa. Sementara itu, tingkat kekhawatiran (_anxiety_) dan suasana hati (_mood_) juga berpengaruh, meskipun tidak sebesar sebelumnya. Atribut-atribut ini akan menentukan langkah yang diambil dalam pembelajaran mesin.
-
-# Metodologi {#machine-learn}
-
-## Model Pembelajaran Mesin
-
-Untuk permasalahan klasifikasi seperti ini, tiga model akan diuji, yaitu Multinomial Logistic Regression, Random Forest, dan Support Vector Machines.
-
-## Metrik Pengukuran Performa Model
+Grafik \@ref(fig:correlation-matrix-plot) menunjukaan bahwa wtatus kehadiran dan tingkat stres mahasiswa berperan besar terhadap tingginya risiko kesehatan mahasiswa. Sementara itu, tingkat kekhawatiran (_anxiety_) dan suasana hati (_mood_) juga berpengaruh, meskipun tidak sebesar sebelumnya. Atribut-atribut ini akan menentukan langkah yang diambil dalam pembelajaran mesin.
 
 ## Persiapan data pelatihan
 
-Untuk hasil yang konsisten dalam percobaan ini, digunakan seed tertentu untuk melakukan operasi.
+Untuk hasil yang konsisten dalam percobaan ini, digunakan seed tertentu untuk melakukan operasi. Ini memastikan tiap operasi random dalam proses ini tetap sama tiap kali dijalankan dari awal.
 
-```{r set-seed-1740812399}
+```{r set-seed-1740812399, cache=TRUE}
 # 1740812400 adalah 28 Februari 2025, 23:59:59 WIB
 set.seed(1740812399)
 ```
 
-Normalisasi data
+Untuk memudahkan algoritma pembelajaran mesin dalam menginterpretasi nilai, data yang ada harus dinormalisasikan dan diubah menjadi bentuk angka. Data diubah menjadi bentuk angka menggunakan fungsi `mutate_all` dari library `dplyr` [@R-dplyr]. Kemudian, data dimasukkan ke fungsi normalisasi `preProcess` yang disediakan oleh library ML `caret` [@R-caret]. Normalisasi dilakukan sehingga semua data berada pada rentang $[-1, 1]$ (parameter `rangeBounds`), dengan rata-rata di sekitar 0 (metode _"center"_), dan deviasi standar di sekitar 1 (metode _"scale"_).
 
-```{r normalize-data}
+Karena tingkat kesehatan merupakan variabel yang akan diuji, tipe datanya dibiarkan dalam bentuk _factor_. Jika tidak, fungsi-fungsi di bawah tidak akan bisa berjalan.
+
+```{r normalize-data, cache=TRUE}
 new_data_just_numbers <- new_data |>
   mutate_all(as.numeric)
 new_data_just_numbers$Risk.Level <- new_data$Risk.Level
 
-normalized_data_values <- new_data_just_numbers |> 
-  preProcess(method = c("center", "scale"), rangeBounds = c(-1,1))
+normalized_data_values <- new_data_just_numbers |>
+  preProcess(method = c("center", "scale"), rangeBounds = c(-1, 1))
 
 normalized_data <- predict(normalized_data_values, new_data_just_numbers)
 ```
 
-Pembentukan dua data:
+Terakhir, untuk menguji efisiensi pelatihan dan pengujian, dibentuk dua buah data:
 
-1. Data yang mencakup semua variabel.
-2. Data yang hanya melibatkan kolom-kolom yang berpengaruh terhadap tingkat risiko kesehatan.
+1. Data lengkap: Data yang mencakup semua variabel.
+2. Data pilihan: Data yang hanya melibatkan kolom-kolom yang berpengaruh terhadap tingkat risiko kesehatan, dengan nilai korelasi terhadap tingkat risiko di atas $0.1$, yaitu status kehadiran, tingkat stres, tingkat kekhawatiran, dan suasana hati.
 
-```{r two-train-data}
+```{r two-train-data, cache=TRUE}
 numeric_data <- normalized_data
 
 selected_data <- normalized_data |>
@@ -550,9 +564,9 @@ selected_data <- normalized_data |>
   )
 ```
 
-Pembagian data ke dalam dua kelompok. Digunakan partisi yang sama untuk data lengkap dan data terpilih.
+Pembagian data ke dalam dua kelompok. Pembagian menggunakan partisi yang sama untuk data lengkap dan data terpilih [@R-caret].
 
-```{r train-index}
+```{r train-index, cache=TRUE}
 train_index <- createDataPartition(new_data$Risk.Level, p = 0.8, list = FALSE)
 numeric_train_data <- numeric_data[train_index, ]
 numeric_test_data <- numeric_data[-train_index, ]
@@ -560,7 +574,20 @@ selected_train_data <- selected_data[train_index, ]
 selected_test_data <- selected_data[-train_index, ]
 ```
 
-## Proses pelatihan
+# Pembelajaran Mesin {#machine-learn}
+
+Metodologi penelitian yang digunakan di sini adalah eksperimen, yaitu telaah empirik sistematis yang meminimumkan varian dari semua variabel yang berpengaruh terhadap masalah yang diteliti dengan melakukan manipulasi, kontrol, dan operasi secara cermat dan teliti [@hikmawati_2020_metodologi].
+
+Dalam penelitian ini:
+
+- Variabel bebasnya adalah model yang digunakan serta pemilihan data untuk model.
+- Variabel terikatnya adalah performa model dalam pengujian terhadap data yang berbeda.
+- Kontrol dilakukan dengan menjalankan pembagian data, proses pelatihan, dan evaluasi dengan menggunakan _seed_ yang telah ditetapkan. Data yang digunakan untuk pelatihan dan pengujian disamakan untuk semua model.
+
+## Model Pembelajaran Mesin
+
+Untuk permasalahan klasifikasi seperti ini, tiga model akan diuji, yaitu Multinomial Logistic Regression, Random Forest, dan Support Vector Machines. Masing-masing akan dilatih pada data lengkap dan data pilihan.
+Logistic Regression (LR) merupakan model yang berlandaskan pada persamaan linear antar variabel dengan memperkirakan koefisien-koefisien pada persamaan linear. Awalnya dikembangkan untuk klasifikasi kategori biner (dua nilai), namun dapat diterapkan untuk kategori dengan tiga nilai atau lebih menggunakan teknik lanjutan seperti Multinomial Logistic Regression (MLR) [@yusrianpaliling_2023_multinomial]. Detail tentang koefisien yang dihasilkan tidak akan dijelaskan dalam laporan ini. MLR diimplementasikan dalam library `nnet` menggunakan fungsi `multinom` [@R-nnet].
 
 ```{r logistics, cache=TRUE}
 logit_model_numeric <- multinom(
@@ -573,21 +600,35 @@ logit_model_selected <- multinom(
 )
 ```
 
+```{r rf-params, cache=TRUE, echo=FALSE}
+rf_ntree <- as.numeric(floor(sqrt(count(numeric_train_data)) / 2))
+rf_mtry_numeric <- floor(sqrt(length(numeric_train_data)))
+rf_mtry_selected <- floor(sqrt(length(selected_train_data)))
+```
+
+Random Forest (RF) adalah kombinasi dari masing-masing tree yang baik kemudian dikombinasikan ke dalam satu model. Random Forest bergantung pada sebuah nilai vector random dengan distribusi yang sama pada semua pohon yang masing-masing cabang memiliki kedalaman yang maksimal. RF merupakan pengembangan dari Decision Tree, dimana data dibagi menjadi himpunan bagian berdasarkan variabel inputnya [@_2022_6]. Algoritma RF diimplementasikan oleh library `randomForest` [@R-randomForest]. Banyak cabang yang dibentuk adalah `r rf_ntree`, dengan `r rf_mtry_numeric` kali sampling untuk data lengkap dan `r rf_mtry_selected` kali untuk data pilihan.
+
 ```{r rf, cache=TRUE}
+rf_ntree <- as.numeric(floor(sqrt(count(numeric_train_data)) / 2))
+rf_mtry_numeric <- floor(sqrt(length(numeric_train_data)))
+rf_mtry_selected <- floor(sqrt(length(selected_train_data)))
+
 rf_model_numeric <- randomForest(
   Risk.Level ~ .,
-  data = numeric_train_data, 
-  ntree = 5,
-  mtry = 2
+  data = numeric_train_data,
+  ntree = rf_ntree,
+  mtry = rf_mtry_numeric
 )
 
 rf_model_selected <- randomForest(
   Risk.Level ~ .,
-  data = selected_train_data, 
-  ntree = 5,
-  mtry = 2
+  data = selected_train_data,
+  ntree = rf_ntree,
+  mtry = rf_mtry_selected
 )
 ```
+
+Support Vector Machines (SVM) adalah model klasifikasi yang menggunakan teknik kernel untuk memetakan data ke dalam ruang berdimensi tinggi, sehingga dapat menangani masalah klasifikasi non-linear [@saepudin_2024_perbandingan]. Algoritma RF diimplementasikan oleh library `e1071` pada fungsi SVM [@R-e1071]. Kernel yang digunakan di sini adalah kernel radial, yang lebih dapat diandalkan untuk data yang tidak linear, seperti _anxiety level_ dan _mood score_.
 
 ```{r svm, cache=TRUE}
 svm_model_numeric <- svm(
@@ -600,31 +641,33 @@ svm_model_selected <- svm(
 )
 ```
 
-## Evaluasi model
+## Metrik Pengukuran Performa Model
 
-Model dievaluasi dengan dua kriteria: akurasi dan lama prediksi.
+Metrik pengukuran performa model yang digunakan adalah akurasi prediksi dan lama waktu prediksi. Akurasi berperan penting agar dapat mendeteksi faktor dengan tepat. Metrik akurasi diukur dari atribut "Accuracy" dalam _confusion matrix_ [@R-caret]. Sementara itu, waktu juga diperlukan agar mampu membaca data dengan jumlah besar dengan cepat. Performa waktu diukur menggunakan fungsi `system.time` yang mengukur lama waktu prediksi [@R-base].
 
-```{r model-evaluation}
+```{r model-evaluation, cache=TRUE}
 # Evaluate models with predictions
 evaluate_model <- function(model, testData, model_name) {
   # Measure the time taken to make the predictions
   prediction_time <- system.time({
     predictions <- predict(model, newdata = testData)
-  })['elapsed']  # Extract the elapsed time
-  
+  })["elapsed"]  # Extract the elapsed time
+
   # Calculate the confusion matrix
   cm <- confusionMatrix(predictions, testData$Risk.Level)
-  
+
   # Extract the accuracy
-  accuracy <- cm$overall['Accuracy']
-  
-  # Return a list including the model name, accuracy, model object, and prediction time
-  return(list(
+  accuracy <- cm$overall["Accuracy"]
+
+  # Return a list including the model name, accuracy,
+  # model object, and prediction time
+  list(
     ModelName = model_name,
+    ConfusionMatrix = cm,
     Accuracy = accuracy,
     PredictionTime = prediction_time,
     ModelObject = model
-  ))
+  )
 }
 
 # Initialize results data frame
@@ -652,7 +695,9 @@ results <- list(
 
 # Hasil dan Pembahasan {#results}
 
-```{r calculate-results}
+Untuk evaluasi, $R^2$ dan $RMSE$ tidak bisa digunakan untuk soal klasifikasi, karena lebih cocok untuk masalah regresi. Data yang dihasilkan dari _confusion matrix_ lebih cocok untuk dalam kasus ini. Hasil dapat dilihat pada tabel \@ref(tab:calculate-results) serta grafik \@ref(fig:visual-evaluation-accuracy), \@ref(fig:visual-evaluation-prediction-time), dan \@ref(fig:visual-evaluation-score).
+
+```{r calculate-results, echo=FALSE}
 # Arcade-style million scoring multiplier
 score_scale <- 1000000
 
@@ -668,7 +713,7 @@ results_df$NormAccuracy <-
   results_df$Accuracy / max(results_df$Accuracy) * score_scale
 results_df$NormPredictionTime <-
   (max(results_df$PredictionTime) - (results_df$PredictionTime)) /
-  (max(results_df$PredictionTime) - min(results_df$PredictionTime)) * 
+  (max(results_df$PredictionTime) - min(results_df$PredictionTime)) *
   score_scale
 
 # Combine the metrics
@@ -684,25 +729,36 @@ results_df |>
   kable_material()
 ```
 
-Untuk evaluasi, $R^2$ dan $RMSE$ tidak bisa digunakan untuk soal klasifikasi, karena lebih cocok untuk masalah regresi.
-
-```{r visual-evaluation-accuracy}
-# Visualize model accuracies
+```{r visual-evaluation-accuracy, echo=FALSE, fig.cap="Akurasi Model"}
 ggplot(results_df, aes(x = Model, y = Accuracy, fill = Model)) +
   geom_bar(stat = "identity", position = position_dodge()) +
   coord_cartesian(ylim = c(750000, 1000000)) +
-  labs(title = "Akurasi Model", y = "Accuracy", x = "Model")
+  labs(title = "Akurasi Model", y = "Accuracy", x = "Model") +
+  rremove("x.text")
 ```
 
-```{r visual-evaluation-prediction-time}
-# TODO change to log scale
-# Visualize model accuracies
+```{r visual-evaluation-prediction-time, echo=FALSE, fig.cap="Waktu Prediksi Model"}
 ggplot(results_df, aes(x = Model, y = PredictionTime, fill = Model)) +
   geom_bar(stat = "identity", position = position_dodge()) +
-  coord_cartesian(ylim = c(1e+03, 2e+06)) +
+  coord_cartesian(ylim = c(1000, 1000000)) +
   scale_y_log10() +
-  labs(title = "Waktu Prediksi Model", y = "Prediction Time", x = "Model")
+  labs(title = "Waktu Prediksi Model", y = "Prediction Time (ms)", x = "Model") +
+  rremove("x.text")
 ```
+
+```{r visual-evaluation-score, echo=FALSE, fig.cap="Skor Prediksi Model"}
+ggplot(results_df, aes(x = Model, y = CompositeScore, fill = Model)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  coord_cartesian(ylim = c(800000, 1000000)) +
+  labs(title = "Skor Prediksi Model", y = "Composite Score", x = "Model") +
+  rremove("x.text")
+```
+
+Model Random Forest menghasilkan akurasi sempurna, baik menggunakan data lengkap maupun data pilihan. SVM tidak jauh tertinggal, namun menghasilkan akurasi lebih baik menggunakan data dengan atribut yang telah disaring sebelumnya. MLR menghasilkan akurasi terendah dari semuanya, dan tidak ada perbedaan antara penggunaan data lengkap ataupun data pilihan.
+
+Untuk waktu, terlihat jelas bahwa penggunaan data pilihan mengurangi waktu prediksi secara signifikan terhadap ketiga model. Karena kompleksitasnya, SVM memakan waktu lebih lama daripada model lainnya, meskipun demikian SVM mengalami penurunan waktu yang signifikan dengan menggunakan data yang telah dipilah untuk optimasi.
+
+Untuk mengukur performa keseluruhan, nilai waktu terlebih dahulu distandarkan di sekitar maksimum dan minimum sehingga waktu tersingkat memberi nilai lebih. Kemudian nilai keduanya digabung dengan komposisi akurasi 90% dan waktu 10%. Hasilnya, model Random Forest mengungguli model yang lain berkat akurasinya yang tinggi. Model RF dengan data pilihan tampil lebih baik dengan optimasi waktunya.
 
 ```{r winner, echo=FALSE}
 # Determine the best model
@@ -711,6 +767,8 @@ best_model_name <- results_df$Model[best_model_index]
 best_model_kind <- ((best_model_index - 1) %% 2) + 1
 print(paste("Best Model:", best_model_name))
 ```
+
+Berdasarkan hasil di atas, model dan pilihan data terbaik adalah `r best_model_name` dengan skor akhir `r results_df$CompositeScore[[best_model_index]]`, dan nilai _precision_, _recall_, dan skor $F1$ yang sempurna. Model ini mampu mengidentifikasi semua data tes dengan tepat.
 
 ```{r winner-showcase, echo=FALSE}
 # Retrieve the model object of the best model
@@ -725,29 +783,30 @@ best_predictions <- predict(best_model_object, newdata = test_data)
 best_confusion_matrix <- confusionMatrix(best_predictions, test_data$Risk.Level)
 ```
 
-```{r winner-confusion-matrix, fig.width=5, fig.height=5, echo=FALSE}
+```{r winner-confusion-matrix, echo=FALSE, fig.cap="Confusion Matrix Model Terbaik", warning=FALSE}
 # https://developer.ibm.com/tutorials/awb-confusion-matrix-r/
 
-best_confusion_matrix$table |> as.data.frame() |>
+best_confusion_matrix$table |>
+  as.data.frame() |>
   ggplot(aes(x = Prediction, y = Reference, fill = Freq)) +
-  geom_tile() + 
+  geom_tile() +
   theme_bw() +
   coord_equal() +
   scale_fill_distiller(palette = "Blues", direction = 1) +
-  guides(fill = FALSE) +
-  geom_text(aes(label = Freq), color = "black", size = 8) +
+  guides(fill = "none") +
+  geom_text(aes(label = Freq), color = "black", size = 4) +
   # following lines only increase text size (optional)
-  theme(axis.text.x = element_text(size = 16),
-        axis.text.y = element_text(size = 16),
-        axis.title.x = element_text(size = 24),
-        axis.title.y = element_text(size = 24))
+  theme(axis.text.x = element_text(size = 8),
+        axis.text.y = element_text(size = 8),
+        axis.title.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12))
 ```
 
 ```{r winner-show-by-class, echo=FALSE}
 best_confusion_matrix$byClass |>
   kbl(
-    digits = 6, 
-    caption = "Tabel Prediksi Per Tingkat Risiko", 
+    digits = 6,
+    caption = "Tabel Prediksi Per Tingkat Risiko",
     col.names = c(
       "Sens",
       "Spec",
@@ -774,8 +833,15 @@ kbl(
   kable_material()
 ```
 
-
 # Kesimpulan {#conclusion}
+
+Laporan ini bertujuan untuk mengeksplorasi data kesehatan dan kehadiran mahasiswa untuk mengungkap keterkaitan antar variabel, membentuk model pembelajaran mesin untuk mengidentifikasi tingkat risiko kesehatan mahasiswa, dan bagaimana hasil eksplorasi data berperan dalam optimalisasi data yang digunakan dalam pembelajaran mesin.
+
+Hasil eksplorasi data menunjukkan bahwa terdapat hubungan kuat pada status kehadiran, dan tingkat stres, serta hubungan moderat pada tingkat kekhawatiran dan suasana hati terhadap tingkat risiko kesehatan. Keempat atribut ini yang nantinya berperan dalam optimalisasi data yang digunakan sebagai acuan model.
+
+Berdasarkan faktor akurasi dan performa waktu, hasil pelatihan dan pengujian model pembelajaran mesin menunjukkan bahwa Random Forest dengan data pilihan merupakan model terbaik untuk dataset ini. Secara keseluruhan, performa RF mengungguli model lainnya baik dalam hal akurasi maupun waktu. Penggunaan data pilihan, yaitu data dengan atribut yang memiliki tingkat korelasi yang memadai, mampu meningkatkan akurasi dan mengurangi lama prediksi, terutama pada model SVM.
+
+Laporan ini masih meninggalkan banyak ranah untuk pengembangan dan perbaikan. Pertama, analisis ke ranah psikologi perlu dilakukan untuk memahami lebih lanjut hubungan dari tingkat stres, kekhawatiran, dan suasana hati terhadap kehadiran dan risiko kesehatan. Kedua, penyebab dari kekurangan tiap model masih perlu digali lebih lanjut dengan memperhatikan karakteristik dari tiap model dan data yang digunakan untuk meningkatkan performa terhadap semua model. Dan ketiga, penelitian lain menyinggung soal penggunaan metode lain yang disebut _Gradient Boosting_ atau XGBoost yang diklaim lebih efektif untuk data yang lebih kompleks, sehingga metode ini layak menjadi pertimbangan untuk penelitian kedepannya.
 
 # Daftar Pustaka {#bibliography}
 
